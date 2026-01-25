@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblical Detective: The Documentary Hypothesis Quest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2c1810 0%, #4a2c17 50%, #1a0f0a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Georgia', serif;
+            color: #f4e4bc;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-size: 2em;
+            color: #ffd700;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: #c9a86c;
+        }
+
+        #gameContainer {
+            position: relative;
+            border: 8px solid #8b4513;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(139, 69, 19, 0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            background: #d4b896;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #e8d5b7 0%, #d4c4a8 50%, #c9b89a 100%);
+        }
+
+        #ui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 800px;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(139, 69, 19, 0.3);
+            border-radius: 8px;
+        }
+
+        #sources {
+            display: flex;
+            gap: 15px;
+        }
+
+        .source-indicator {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            border: 3px solid;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+
+        .source-indicator.collected {
+            opacity: 1;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .source-j { background: #ffeb3b; color: #5d4e00; border-color: #ffd700; }
+        .source-e { background: #4caf50; color: #1b3d1c; border-color: #2e7d32; }
+        .source-d { background: #2196f3; color: #0d3c61; border-color: #1565c0; }
+        .source-p { background: #9c27b0; color: #3d0f47; border-color: #7b1fa2; }
+
+        #score {
+            font-size: 1.3em;
+            color: #ffd700;
+        }
+
+        #instructions {
+            margin-top: 15px;
+            text-align: center;
+            color: #c9a86c;
+            font-size: 0.9em;
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #ffd700;
+            padding: 30px 50px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            border: 3px solid #8b4513;
+            z-index: 100;
+        }
+
+        #message h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        #message p {
+            margin-bottom: 20px;
+            color: #f4e4bc;
+        }
+
+        #restartBtn {
+            background: linear-gradient(to bottom, #8b4513, #5d2e0a);
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: 'Georgia', serif;
+            transition: all 0.2s ease;
+        }
+
+        #restartBtn:hover {
+            background: linear-gradient(to bottom, #a0522d, #8b4513);
+            transform: scale(1.05);
+        }
+
+        .legend {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 0.85em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>Biblical Detective</h1>
+    <p class="subtitle">The Documentary Hypothesis Quest</p>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="message">
+            <h2 id="messageTitle">Game Over</h2>
+            <p id="messageText">You were caught by the critics!</p>
+            <button id="restartBtn">Play Again</button>
+        </div>
+    </div>
+
+    <div id="ui">
+        <div id="sources">
+            <div class="source-indicator source-j" id="ind-j" title="Jahwist Source">J</div>
+            <div class="source-indicator source-e" id="ind-e" title="Elohist Source">E</div>
+            <div class="source-indicator source-d" id="ind-d" title="Deuteronomist Source">D</div>
+            <div class="source-indicator source-p" id="ind-p" title="Priestly Source">P</div>
+        </div>
+        <div id="score">Score: <span id="scoreValue">0</span></div>
+    </div>
+
+    <p id="instructions">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move. Collect all four sources while avoiding the critics!</p>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #ffeb3b;"></div> J - Jahwist (YHWH)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div> E - Elohist (Elohim)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #2196f3;"></div> D - Deuteronomist</div>
+        <div class="legend-item"><div class="legend-color" style="background: #9c27b0;"></div> P - Priestly</div>
+    </div>
+
+    <script>
+        // Game Configuration
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_WIDTH = canvas.width;
+        const CANVAS_HEIGHT = canvas.height;
+
+        // Game State
+        let gameRunning = true;
+        let score = 0;
+        let gameWon = false;
+
+        // Player (Biblical Detective)
+        const player = {
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2,
+            width: 30,
+            height: 45,
+            speed: 5,
+            dx: 0,
+            dy: 0
+        };
+
+        // Sources to collect
+        const sources = [
+            { id: 'j', name: 'Jahwist', color: '#ffeb3b', borderColor: '#ffd700', x: 0, y: 0, collected: false },
+            { id: 'e', name: 'Elohist', color: '#4caf50', borderColor: '#2e7d32', x: 0, y: 0, collected: false },
+            { id: 'd', name: 'Deuteronomist', color: '#2196f3', borderColor: '#1565c0', x: 0, y: 0, collected: false },
+            { id: 'p', name: 'Priestly', color: '#9c27b0', borderColor: '#7b1fa2', x: 0, y: 0, collected: false }
+        ];
+        const SOURCE_SIZE = 35;
+
+        // Enemies (Critics/Skeptics)
+        const enemies = [];
+        const ENEMY_COUNT = 5;
+        const ENEMY_SIZE = 25;
+
+        // Input handling
+        const keys = {};
+
+        // Initialize game
+        function init() {
+            // Reset player position
+            player.x = CANVAS_WIDTH / 2;
+            player.y = CANVAS_HEIGHT / 2;
+            player.dx = 0;
+            player.dy = 0;
+
+            // Reset score
+            score = 0;
+            updateScoreDisplay();
+
+            // Place sources randomly
+            sources.forEach((source, index) => {
+                source.collected = false;
+                source.x = 50 + Math.random() * (CANVAS_WIDTH - 100);
+                source.y = 50 + Math.random() * (CANVAS_HEIGHT - 100);
+                document.getElementById(`ind-${source.id}`).classList.remove('collected');
+            });
+
+            // Create enemies
+            enemies.length = 0;
+            for (let i = 0; i < ENEMY_COUNT; i++) {
+                enemies.push({
+                    x: Math.random() * (CANVAS_WIDTH - ENEMY_SIZE * 2) + ENEMY_SIZE,
+                    y: Math.random() * (CANVAS_HEIGHT - ENEMY_SIZE * 2) + ENEMY_SIZE,
+                    dx: (Math.random() - 0.5) * 4,
+                    dy: (Math.random() - 0.5) * 4,
+                    size: ENEMY_SIZE
+                });
+            }
+
+            // Reset game state
+            gameRunning = true;
+            gameWon = false;
+            document.getElementById('message').style.display = 'none';
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', init);
+
+        // Update player movement
+        function updatePlayer() {
+            player.dx = 0;
+            player.dy = 0;
+
+            if (keys['arrowleft'] || keys['a']) player.dx = -player.speed;
+            if (keys['arrowright'] || keys['d']) player.dx = player.speed;
+            if (keys['arrowup'] || keys['w']) player.dy = -player.speed;
+            if (keys['arrowdown'] || keys['s']) player.dy = player.speed;
+
+            // Diagonal movement normalization
+            if (player.dx !== 0 && player.dy !== 0) {
+                player.dx *= 0.707;
+                player.dy *= 0.707;
+            }
+
+            player.x += player.dx;
+            player.y += player.dy;
+
+            // Keep player in bounds
+            player.x = Math.max(player.width / 2, Math.min(CANVAS_WIDTH - player.width / 2, player.x));
+            player.y = Math.max(player.height / 2, Math.min(CANVAS_HEIGHT - player.height / 2, player.y));
+        }
+
+        // Update enemies
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                enemy.x += enemy.dx;
+                enemy.y += enemy.dy;
+
+                // Bounce off walls
+                if (enemy.x <= enemy.size || enemy.x >= CANVAS_WIDTH - enemy.size) {
+                    enemy.dx *= -1;
+                    enemy.x = Math.max(enemy.size, Math.min(CANVAS_WIDTH - enemy.size, enemy.x));
+                }
+                if (enemy.y <= enemy.size || enemy.y >= CANVAS_HEIGHT - enemy.size) {
+                    enemy.dy *= -1;
+                    enemy.y = Math.max(enemy.size, Math.min(CANVAS_HEIGHT - enemy.size, enemy.y));
+                }
+            });
+        }
+
+        // Check collisions
+        function checkCollisions() {
+            // Check source collection
+            sources.forEach(source => {
+                if (!source.collected) {
+                    const dx = player.x - source.x;
+                    const dy = player.y - source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < player.width / 2 + SOURCE_SIZE / 2) {
+                        source.collected = true;
+                        score += 250;
+                        updateScoreDisplay();
+                        document.getElementById(`ind-${source.id}`).classList.add('collected');
+
+                        // Check win condition
+                        if (sources.every(s => s.collected)) {
+                            gameWon = true;
+                            endGame(true);
+                        }
+                    }
+                }
+            });
+
+            // Check enemy collision
+            enemies.forEach(enemy => {
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < player.width / 2 + enemy.size / 2) {
+                    endGame(false);
+                }
+            });
+        }
+
+        // Update score display
+        function updateScoreDisplay() {
+            document.getElementById('scoreValue').textContent = score;
+        }
+
+        // End game
+        function endGame(won) {
+            gameRunning = false;
+            const message = document.getElementById('message');
+            const title = document.getElementById('messageTitle');
+            const text = document.getElementById('messageText');
+
+            if (won) {
+                title.textContent = 'Torah Reconstructed!';
+                title.style.color = '#4caf50';
+                text.textContent = `Congratulations! You collected all four sources and reconstructed the Documentary Hypothesis! Final Score: ${score}`;
+            } else {
+                title.textContent = 'Caught!';
+                title.style.color = '#f44336';
+                text.textContent = `The textual critics caught you! You collected ${sources.filter(s => s.collected).length}/4 sources. Score: ${score}`;
+            }
+
+            message.style.display = 'block';
+        }
+
+        // Draw player (Biblical Detective)
+        function drawPlayer() {
+            const x = player.x;
+            const y = player.y;
+
+            // Body (coat)
+            ctx.fillStyle = '#2c2c2c';
+            ctx.beginPath();
+            ctx.moveTo(x - 12, y + 22);
+            ctx.lineTo(x - 8, y);
+            ctx.lineTo(x + 8, y);
+            ctx.lineTo(x + 12, y + 22);
+            ctx.closePath();
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = '#e8c4a0';
+            ctx.beginPath();
+            ctx.arc(x, y - 8, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Detective hat
+            ctx.fillStyle = '#4a3728';
+            // Hat brim
+            ctx.beginPath();
+            ctx.ellipse(x, y - 15, 14, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Hat top
+            ctx.fillRect(x - 8, y - 26, 16, 12);
+            ctx.beginPath();
+            ctx.arc(x, y - 26, 8, Math.PI, 0);
+            ctx.fill();
+
+            // Magnifying glass
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x + 18, y + 5, 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x + 14, y + 10);
+            ctx.lineTo(x + 10, y + 16);
+            ctx.stroke();
+
+            // Eyes
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(x - 3, y - 9, 2, 0, Math.PI * 2);
+            ctx.arc(x + 3, y - 9, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw sources (ancient scrolls)
+        function drawSources() {
+            sources.forEach(source => {
+                if (!source.collected) {
+                    const x = source.x;
+                    const y = source.y;
+                    const size = SOURCE_SIZE;
+
+                    // Glow effect
+                    ctx.shadowColor = source.color;
+                    ctx.shadowBlur = 15;
+
+                    // Scroll body
+                    ctx.fillStyle = '#f5e6d3';
+                    ctx.beginPath();
+                    ctx.roundRect(x - size/2 + 5, y - size/2 + 3, size - 10, size - 6, 3);
+                    ctx.fill();
+
+                    // Scroll ends
+                    ctx.fillStyle = source.borderColor;
+                    ctx.beginPath();
+                    ctx.arc(x - size/2 + 5, y, size/2 - 3, Math.PI/2, -Math.PI/2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(x + size/2 - 5, y, size/2 - 3, -Math.PI/2, Math.PI/2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+
+                    // Letter
+                    ctx.fillStyle = source.borderColor;
+                    ctx.font = 'bold 18px Georgia';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(source.id.toUpperCase(), x, y + 1);
+                }
+            });
+        }
+
+        // Draw enemies (Critics represented as floating question marks with angry expressions)
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                const x = enemy.x;
+                const y = enemy.y;
+                const size = enemy.size;
+
+                // Body (dark robe)
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Red glow
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, size + 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Question mark
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 24px Georgia';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('?', x, y + 2);
+            });
+        }
+
+        // Draw decorative elements
+        function drawBackground() {
+            // Ancient manuscript texture pattern
+            ctx.fillStyle = 'rgba(139, 69, 19, 0.05)';
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.arc(
+                    (i * 50) % CANVAS_WIDTH,
+                    Math.floor(i / 16) * 50 + 25,
+                    2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw background
+            drawBackground();
+
+            if (gameRunning) {
+                // Update
+                updatePlayer();
+                updateEnemies();
+                checkCollisions();
+
+                // Increment score over time
+                score += 1;
+                if (score % 10 === 0) updateScoreDisplay();
+            }
+
+            // Draw everything
+            drawSources();
+            drawEnemies();
+            drawPlayer();
+
+            // Continue loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        init();
+        gameLoop();
+    </script>
+</body>
+</html>
