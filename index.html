@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biblical Detective: The Documentary Hypothesis Quest</title>
+    <title>Biblical Detective: Documentary Hypothesis Quest</title>
     <style>
         * {
             margin: 0;
@@ -12,557 +12,765 @@
         }
 
         body {
-            background: linear-gradient(135deg, #2c1810 0%, #4a2c17 50%, #1a0f0a 100%);
+            background: #1a1a2e;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Georgia', serif;
-            color: #f4e4bc;
-            padding: 20px;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            color: #fff;
+            image-rendering: pixelated;
         }
 
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
         h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            font-size: 2em;
-            color: #ffd700;
+            font-size: 1.5em;
+            margin-bottom: 5px;
+            color: #feca57;
+            text-shadow: 3px 3px 0 #c44;
         }
 
         .subtitle {
-            text-align: center;
-            margin-bottom: 20px;
-            font-style: italic;
-            color: #c9a86c;
+            font-size: 0.6em;
+            margin-bottom: 15px;
+            color: #a0a0a0;
         }
 
         #gameContainer {
             position: relative;
-            border: 8px solid #8b4513;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(139, 69, 19, 0.5), inset 0 0 20px rgba(0,0,0,0.3);
-            background: #d4b896;
+            border: 4px solid #feca57;
+            box-shadow: 0 0 0 4px #222, 0 0 20px rgba(254, 202, 87, 0.3);
+            background: #0f0f23;
         }
 
         #gameCanvas {
             display: block;
-            background: linear-gradient(to bottom, #e8d5b7 0%, #d4c4a8 50%, #c9b89a 100%);
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
         }
 
-        #ui {
+        #hud {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            width: 800px;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: rgba(139, 69, 19, 0.3);
-            border-radius: 8px;
+            width: 640px;
+            padding: 10px 5px;
+            font-size: 0.7em;
         }
 
-        #sources {
+        #sourceDisplay {
             display: flex;
-            gap: 15px;
-        }
-
-        .source-indicator {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.2em;
-            border: 3px solid;
-            opacity: 0.3;
-            transition: all 0.3s ease;
-        }
-
-        .source-indicator.collected {
-            opacity: 1;
-            transform: scale(1.1);
-            box-shadow: 0 0 15px currentColor;
-        }
-
-        .source-j { background: #ffeb3b; color: #5d4e00; border-color: #ffd700; }
-        .source-e { background: #4caf50; color: #1b3d1c; border-color: #2e7d32; }
-        .source-d { background: #2196f3; color: #0d3c61; border-color: #1565c0; }
-        .source-p { background: #9c27b0; color: #3d0f47; border-color: #7b1fa2; }
-
-        #score {
-            font-size: 1.3em;
-            color: #ffd700;
-        }
-
-        #instructions {
-            margin-top: 15px;
-            text-align: center;
-            color: #c9a86c;
-            font-size: 0.9em;
-        }
-
-        #message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.85);
-            color: #ffd700;
-            padding: 30px 50px;
-            border-radius: 15px;
-            text-align: center;
-            display: none;
-            border: 3px solid #8b4513;
-            z-index: 100;
-        }
-
-        #message h2 {
-            font-size: 2em;
-            margin-bottom: 15px;
-        }
-
-        #message p {
-            margin-bottom: 20px;
-            color: #f4e4bc;
-        }
-
-        #restartBtn {
-            background: linear-gradient(to bottom, #8b4513, #5d2e0a);
-            color: #ffd700;
-            border: 2px solid #ffd700;
-            padding: 12px 30px;
-            font-size: 1.1em;
-            cursor: pointer;
-            border-radius: 8px;
-            font-family: 'Georgia', serif;
-            transition: all 0.2s ease;
-        }
-
-        #restartBtn:hover {
-            background: linear-gradient(to bottom, #a0522d, #8b4513);
-            transform: scale(1.05);
-        }
-
-        .legend {
-            margin-top: 20px;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-            font-size: 0.85em;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
             gap: 8px;
         }
 
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.3);
+        .source-box {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            opacity: 0.3;
+            transition: all 0.2s;
         }
+
+        .source-box.collected {
+            opacity: 1;
+            animation: pulse 0.5s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .source-j { border-color: #f1c40f; color: #f1c40f; }
+        .source-e { border-color: #2ecc71; color: #2ecc71; }
+        .source-d { border-color: #3498db; color: #3498db; }
+        .source-p { border-color: #9b59b6; color: #9b59b6; }
+
+        .source-box.collected.source-j { background: rgba(241, 196, 15, 0.3); box-shadow: 0 0 10px #f1c40f; }
+        .source-box.collected.source-e { background: rgba(46, 204, 113, 0.3); box-shadow: 0 0 10px #2ecc71; }
+        .source-box.collected.source-d { background: rgba(52, 152, 219, 0.3); box-shadow: 0 0 10px #3498db; }
+        .source-box.collected.source-p { background: rgba(155, 89, 182, 0.3); box-shadow: 0 0 10px #9b59b6; }
+
+        #lives {
+            color: #e74c3c;
+        }
+
+        #controls {
+            font-size: 0.5em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        #overlay.hidden {
+            display: none;
+        }
+
+        #overlay h2 {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            color: #feca57;
+        }
+
+        #overlay p {
+            font-size: 0.6em;
+            margin-bottom: 15px;
+            text-align: center;
+            line-height: 1.8;
+            max-width: 80%;
+        }
+
+        #overlay button {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+            padding: 15px 30px;
+            background: #feca57;
+            color: #1a1a2e;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #overlay button:hover {
+            background: #fff;
+        }
+
+        .win { color: #2ecc71 !important; }
+        .lose { color: #e74c3c !important; }
     </style>
 </head>
 <body>
-    <h1>Biblical Detective</h1>
-    <p class="subtitle">The Documentary Hypothesis Quest</p>
+    <h1>BIBLICAL DETECTIVE</h1>
+    <p class="subtitle">THE DOCUMENTARY HYPOTHESIS QUEST</p>
 
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-        <div id="message">
-            <h2 id="messageTitle">Game Over</h2>
-            <p id="messageText">You were caught by the critics!</p>
-            <button id="restartBtn">Play Again</button>
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+        <div id="overlay">
+            <h2 id="overlayTitle">BIBLICAL DETECTIVE</h2>
+            <p id="overlayText">
+                Collect the four sources of the<br>
+                Documentary Hypothesis!<br><br>
+                J - Jahwist | E - Elohist<br>
+                D - Deuteronomist | P - Priestly<br><br>
+                Avoid the ancient scrollworms!
+            </p>
+            <button id="startBtn">START GAME</button>
         </div>
     </div>
 
-    <div id="ui">
-        <div id="sources">
-            <div class="source-indicator source-j" id="ind-j" title="Jahwist Source">J</div>
-            <div class="source-indicator source-e" id="ind-e" title="Elohist Source">E</div>
-            <div class="source-indicator source-d" id="ind-d" title="Deuteronomist Source">D</div>
-            <div class="source-indicator source-p" id="ind-p" title="Priestly Source">P</div>
+    <div id="hud">
+        <div id="sourceDisplay">
+            <div class="source-box source-j" id="box-j">J</div>
+            <div class="source-box source-e" id="box-e">E</div>
+            <div class="source-box source-d" id="box-d">D</div>
+            <div class="source-box source-p" id="box-p">P</div>
         </div>
-        <div id="score">Score: <span id="scoreValue">0</span></div>
+        <div id="lives">♥♥♥</div>
     </div>
 
-    <p id="instructions">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move. Collect all four sources while avoiding the critics!</p>
-
-    <div class="legend">
-        <div class="legend-item"><div class="legend-color" style="background: #ffeb3b;"></div> J - Jahwist (YHWH)</div>
-        <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div> E - Elohist (Elohim)</div>
-        <div class="legend-item"><div class="legend-color" style="background: #2196f3;"></div> D - Deuteronomist</div>
-        <div class="legend-item"><div class="legend-color" style="background: #9c27b0;"></div> P - Priestly</div>
-    </div>
+    <p id="controls">ARROW KEYS or WASD to move</p>
 
     <script>
-        // Game Configuration
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const CANVAS_WIDTH = canvas.width;
-        const CANVAS_HEIGHT = canvas.height;
+        ctx.imageSmoothingEnabled = false;
 
-        // Game State
-        let gameRunning = true;
-        let score = 0;
-        let gameWon = false;
+        const W = canvas.width;
+        const H = canvas.height;
+        const TILE = 32;
 
-        // Player (Biblical Detective)
-        const player = {
-            x: CANVAS_WIDTH / 2,
-            y: CANVAS_HEIGHT / 2,
-            width: 30,
-            height: 45,
-            speed: 5,
-            dx: 0,
-            dy: 0
+        // Sprite data - Biblical Detective (your pixel art character!)
+        // 5 frames: idle, walk1, walk2, walk3, walk4
+        const SPRITE_DATA = {
+            // Each sprite is 16x24 pixels, scaled up 2x to 32x48
+            width: 16,
+            height: 24,
+            scale: 2,
+            frames: {
+                // Frame data as pixel arrays - detective with hat and coat
+                idle: [
+                    "................",
+                    "................",
+                    "....444444......",
+                    "...4444444......",
+                    "...4444444......",
+                    "....FFFF........",
+                    "....FEEF........",
+                    "....FFFF........",
+                    ".....FF.........",
+                    "...222222.......",
+                    "...223222.......",
+                    "...222222.......",
+                    "...222222.......",
+                    "....2222........",
+                    "....2..2........",
+                    "....2..2........",
+                    "....5..5........",
+                    "....5..5........",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................"
+                ],
+                walkR1: [
+                    "................",
+                    "................",
+                    ".....444444.....",
+                    "....4444444.....",
+                    "....4444444.....",
+                    ".....FFFF.......",
+                    ".....FEFF.......",
+                    ".....FFFF.......",
+                    "......FF........",
+                    "....222222......",
+                    "....223222......",
+                    "....222222......",
+                    "....222222......",
+                    ".....2222.......",
+                    ".....2.2........",
+                    "....2...2.......",
+                    "....5...5.......",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................"
+                ],
+                walkR2: [
+                    "................",
+                    "................",
+                    ".....444444.....",
+                    "....4444444.....",
+                    "....4444444.....",
+                    ".....FFFF.......",
+                    ".....FEFF.......",
+                    ".....FFFF.......",
+                    "......FF........",
+                    "....222222......",
+                    "....223222......",
+                    "....222222......",
+                    "....222222......",
+                    ".....2222.......",
+                    "......22........",
+                    ".....2..2.......",
+                    ".....5..5.......",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................"
+                ],
+                walkL1: [
+                    "................",
+                    "................",
+                    ".....444444.....",
+                    ".....4444444....",
+                    ".....4444444....",
+                    ".......FFFF.....",
+                    ".......FFEF.....",
+                    ".......FFFF.....",
+                    "........FF......",
+                    "......222222....",
+                    "......222322....",
+                    "......222222....",
+                    "......222222....",
+                    ".......2222.....",
+                    "........2.2.....",
+                    ".......2...2....",
+                    ".......5...5....",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................"
+                ],
+                walkL2: [
+                    "................",
+                    "................",
+                    ".....444444.....",
+                    ".....4444444....",
+                    ".....4444444....",
+                    ".......FFFF.....",
+                    ".......FFEF.....",
+                    ".......FFFF.....",
+                    "........FF......",
+                    "......222222....",
+                    "......222322....",
+                    "......222222....",
+                    "......222222....",
+                    ".......2222.....",
+                    "........22......",
+                    ".......2..2.....",
+                    ".......5..5.....",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................",
+                    "................"
+                ]
+            },
+            colors: {
+                '.': null,           // transparent
+                '4': '#4a3728',      // hat (brown)
+                'F': '#e8c4a0',      // face (skin)
+                'E': '#333333',      // eyes
+                '2': '#2c2c5c',      // coat (dark blue)
+                '3': '#feca57',      // coat button/detail
+                '5': '#1a1a2e'       // shoes
+            }
         };
 
-        // Sources to collect
+        // Pre-render sprites to canvases
+        const spriteCanvases = {};
+
+        function renderSprite(frameData, colors, scale) {
+            const w = frameData[0].length;
+            const h = frameData.length;
+            const spriteCanvas = document.createElement('canvas');
+            spriteCanvas.width = w * scale;
+            spriteCanvas.height = h * scale;
+            const sctx = spriteCanvas.getContext('2d');
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const char = frameData[y][x];
+                    const color = colors[char];
+                    if (color) {
+                        sctx.fillStyle = color;
+                        sctx.fillRect(x * scale, y * scale, scale, scale);
+                    }
+                }
+            }
+            return spriteCanvas;
+        }
+
+        // Initialize sprite canvases
+        Object.keys(SPRITE_DATA.frames).forEach(key => {
+            spriteCanvases[key] = renderSprite(
+                SPRITE_DATA.frames[key],
+                SPRITE_DATA.colors,
+                SPRITE_DATA.scale
+            );
+        });
+
+        // Game state
+        let gameState = 'menu'; // menu, playing, win, lose
+        let lives = 3;
+        let invincible = 0;
+
+        // Player
+        const player = {
+            x: W / 2,
+            y: H / 2,
+            vx: 0,
+            vy: 0,
+            speed: 3.5,
+            width: 28,
+            height: 40,
+            frame: 'idle',
+            animTimer: 0,
+            facing: 'right'
+        };
+
+        // Sources
         const sources = [
-            { id: 'j', name: 'Jahwist', color: '#ffeb3b', borderColor: '#ffd700', x: 0, y: 0, collected: false },
-            { id: 'e', name: 'Elohist', color: '#4caf50', borderColor: '#2e7d32', x: 0, y: 0, collected: false },
-            { id: 'd', name: 'Deuteronomist', color: '#2196f3', borderColor: '#1565c0', x: 0, y: 0, collected: false },
-            { id: 'p', name: 'Priestly', color: '#9c27b0', borderColor: '#7b1fa2', x: 0, y: 0, collected: false }
+            { id: 'j', name: 'Jahwist', color: '#f1c40f', x: 0, y: 0, collected: false, bobOffset: 0 },
+            { id: 'e', name: 'Elohist', color: '#2ecc71', x: 0, y: 0, collected: false, bobOffset: Math.PI/2 },
+            { id: 'd', name: 'Deuteronomist', color: '#3498db', x: 0, y: 0, collected: false, bobOffset: Math.PI },
+            { id: 'p', name: 'Priestly', color: '#9b59b6', x: 0, y: 0, collected: false, bobOffset: Math.PI*1.5 }
         ];
-        const SOURCE_SIZE = 35;
 
-        // Enemies (Critics/Skeptics)
-        const enemies = [];
-        const ENEMY_COUNT = 5;
-        const ENEMY_SIZE = 25;
+        // Enemies (Scrollworms - snake-like ancient creatures)
+        let enemies = [];
 
-        // Input handling
+        // Particles
+        let particles = [];
+
+        // Input
         const keys = {};
 
-        // Initialize game
+        // Initialize
         function init() {
-            // Reset player position
-            player.x = CANVAS_WIDTH / 2;
-            player.y = CANVAS_HEIGHT / 2;
-            player.dx = 0;
-            player.dy = 0;
+            player.x = W / 2;
+            player.y = H / 2;
+            player.vx = 0;
+            player.vy = 0;
+            lives = 3;
+            invincible = 0;
+            updateLivesDisplay();
 
-            // Reset score
-            score = 0;
-            updateScoreDisplay();
-
-            // Place sources randomly
-            sources.forEach((source, index) => {
-                source.collected = false;
-                source.x = 50 + Math.random() * (CANVAS_WIDTH - 100);
-                source.y = 50 + Math.random() * (CANVAS_HEIGHT - 100);
-                document.getElementById(`ind-${source.id}`).classList.remove('collected');
+            // Reset sources
+            sources.forEach(s => {
+                s.collected = false;
+                s.x = 60 + Math.random() * (W - 120);
+                s.y = 60 + Math.random() * (H - 120);
+                document.getElementById(`box-${s.id}`).classList.remove('collected');
             });
 
             // Create enemies
-            enemies.length = 0;
-            for (let i = 0; i < ENEMY_COUNT; i++) {
-                enemies.push({
-                    x: Math.random() * (CANVAS_WIDTH - ENEMY_SIZE * 2) + ENEMY_SIZE,
-                    y: Math.random() * (CANVAS_HEIGHT - ENEMY_SIZE * 2) + ENEMY_SIZE,
-                    dx: (Math.random() - 0.5) * 4,
-                    dy: (Math.random() - 0.5) * 4,
-                    size: ENEMY_SIZE
+            enemies = [];
+            for (let i = 0; i < 4; i++) {
+                createEnemy();
+            }
+
+            particles = [];
+            gameState = 'playing';
+            document.getElementById('overlay').classList.add('hidden');
+        }
+
+        function createEnemy() {
+            const segments = [];
+            const startX = Math.random() < 0.5 ? -30 : W + 30;
+            const startY = Math.random() * H;
+            const angle = Math.atan2(H/2 - startY, W/2 - startX) + (Math.random() - 0.5);
+
+            for (let i = 0; i < 8; i++) {
+                segments.push({
+                    x: startX - i * 12 * Math.cos(angle),
+                    y: startY - i * 12 * Math.sin(angle)
                 });
             }
 
-            // Reset game state
-            gameRunning = true;
-            gameWon = false;
-            document.getElementById('message').style.display = 'none';
+            enemies.push({
+                segments: segments,
+                speed: 1.5 + Math.random(),
+                angle: angle,
+                turnTimer: 0,
+                turnDir: Math.random() < 0.5 ? 1 : -1
+            });
         }
 
-        // Event listeners
-        document.addEventListener('keydown', (e) => {
+        function updateLivesDisplay() {
+            document.getElementById('lives').textContent = '♥'.repeat(lives) + '♡'.repeat(3 - lives);
+        }
+
+        // Input handlers
+        document.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
-            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) {
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
                 e.preventDefault();
             }
         });
 
-        document.addEventListener('keyup', (e) => {
+        document.addEventListener('keyup', e => {
             keys[e.key.toLowerCase()] = false;
         });
 
-        document.getElementById('restartBtn').addEventListener('click', init);
+        document.getElementById('startBtn').addEventListener('click', init);
 
-        // Update player movement
-        function updatePlayer() {
-            player.dx = 0;
-            player.dy = 0;
+        // Update
+        function update() {
+            if (gameState !== 'playing') return;
 
-            if (keys['arrowleft'] || keys['a']) player.dx = -player.speed;
-            if (keys['arrowright'] || keys['d']) player.dx = player.speed;
-            if (keys['arrowup'] || keys['w']) player.dy = -player.speed;
-            if (keys['arrowdown'] || keys['s']) player.dy = player.speed;
+            // Player movement
+            let dx = 0, dy = 0;
+            if (keys['arrowleft'] || keys['a']) dx -= 1;
+            if (keys['arrowright'] || keys['d']) dx += 1;
+            if (keys['arrowup'] || keys['w']) dy -= 1;
+            if (keys['arrowdown'] || keys['s']) dy += 1;
 
-            // Diagonal movement normalization
-            if (player.dx !== 0 && player.dy !== 0) {
-                player.dx *= 0.707;
-                player.dy *= 0.707;
+            // Normalize diagonal
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
             }
 
-            player.x += player.dx;
-            player.y += player.dy;
+            player.vx = dx * player.speed;
+            player.vy = dy * player.speed;
+            player.x += player.vx;
+            player.y += player.vy;
 
-            // Keep player in bounds
-            player.x = Math.max(player.width / 2, Math.min(CANVAS_WIDTH - player.width / 2, player.x));
-            player.y = Math.max(player.height / 2, Math.min(CANVAS_HEIGHT - player.height / 2, player.y));
-        }
+            // Bounds
+            player.x = Math.max(20, Math.min(W - 20, player.x));
+            player.y = Math.max(30, Math.min(H - 20, player.y));
 
-        // Update enemies
-        function updateEnemies() {
+            // Animation
+            if (dx !== 0 || dy !== 0) {
+                player.animTimer++;
+                if (dx > 0) player.facing = 'right';
+                if (dx < 0) player.facing = 'left';
+
+                const walkFrame = Math.floor(player.animTimer / 8) % 2 + 1;
+                player.frame = player.facing === 'right' ? `walkR${walkFrame}` : `walkL${walkFrame}`;
+            } else {
+                player.frame = 'idle';
+                player.animTimer = 0;
+            }
+
+            // Invincibility
+            if (invincible > 0) invincible--;
+
+            // Update enemies
             enemies.forEach(enemy => {
-                enemy.x += enemy.dx;
-                enemy.y += enemy.dy;
-
-                // Bounce off walls
-                if (enemy.x <= enemy.size || enemy.x >= CANVAS_WIDTH - enemy.size) {
-                    enemy.dx *= -1;
-                    enemy.x = Math.max(enemy.size, Math.min(CANVAS_WIDTH - enemy.size, enemy.x));
+                enemy.turnTimer++;
+                if (enemy.turnTimer > 60 + Math.random() * 60) {
+                    enemy.turnTimer = 0;
+                    enemy.turnDir = Math.random() < 0.5 ? 1 : -1;
                 }
-                if (enemy.y <= enemy.size || enemy.y >= CANVAS_HEIGHT - enemy.size) {
-                    enemy.dy *= -1;
-                    enemy.y = Math.max(enemy.size, Math.min(CANVAS_HEIGHT - enemy.size, enemy.y));
+
+                // Slightly home towards player
+                const toPlayer = Math.atan2(player.y - enemy.segments[0].y, player.x - enemy.segments[0].x);
+                let angleDiff = toPlayer - enemy.angle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                enemy.angle += Math.sign(angleDiff) * 0.02;
+                enemy.angle += enemy.turnDir * 0.01;
+
+                // Move head
+                enemy.segments[0].x += Math.cos(enemy.angle) * enemy.speed;
+                enemy.segments[0].y += Math.sin(enemy.angle) * enemy.speed;
+
+                // Wrap around
+                if (enemy.segments[0].x < -50) enemy.segments[0].x = W + 50;
+                if (enemy.segments[0].x > W + 50) enemy.segments[0].x = -50;
+                if (enemy.segments[0].y < -50) enemy.segments[0].y = H + 50;
+                if (enemy.segments[0].y > H + 50) enemy.segments[0].y = -50;
+
+                // Follow segments
+                for (let i = 1; i < enemy.segments.length; i++) {
+                    const prev = enemy.segments[i - 1];
+                    const curr = enemy.segments[i];
+                    const dist = Math.hypot(prev.x - curr.x, prev.y - curr.y);
+                    if (dist > 12) {
+                        const ang = Math.atan2(prev.y - curr.y, prev.x - curr.x);
+                        curr.x += Math.cos(ang) * (dist - 12);
+                        curr.y += Math.sin(ang) * (dist - 12);
+                    }
                 }
-            });
-        }
 
-        // Check collisions
-        function checkCollisions() {
-            // Check source collection
-            sources.forEach(source => {
-                if (!source.collected) {
-                    const dx = player.x - source.x;
-                    const dy = player.y - source.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                // Collision with player
+                if (invincible === 0) {
+                    for (const seg of enemy.segments) {
+                        const dist = Math.hypot(player.x - seg.x, player.y - seg.y);
+                        if (dist < 20) {
+                            lives--;
+                            updateLivesDisplay();
+                            invincible = 90;
 
-                    if (distance < player.width / 2 + SOURCE_SIZE / 2) {
-                        source.collected = true;
-                        score += 250;
-                        updateScoreDisplay();
-                        document.getElementById(`ind-${source.id}`).classList.add('collected');
+                            // Knockback
+                            const ang = Math.atan2(player.y - seg.y, player.x - seg.x);
+                            player.x += Math.cos(ang) * 40;
+                            player.y += Math.sin(ang) * 40;
 
-                        // Check win condition
-                        if (sources.every(s => s.collected)) {
-                            gameWon = true;
-                            endGame(true);
+                            // Particles
+                            for (let i = 0; i < 10; i++) {
+                                particles.push({
+                                    x: player.x,
+                                    y: player.y,
+                                    vx: (Math.random() - 0.5) * 5,
+                                    vy: (Math.random() - 0.5) * 5,
+                                    life: 30,
+                                    color: '#e74c3c'
+                                });
+                            }
+
+                            if (lives <= 0) {
+                                gameState = 'lose';
+                                showOverlay('GAME OVER', 'The scrollworms got you!<br>You failed to reconstruct<br>the Torah...', 'lose');
+                            }
+                            break;
                         }
                     }
                 }
             });
 
-            // Check enemy collision
-            enemies.forEach(enemy => {
-                const dx = player.x - enemy.x;
-                const dy = player.y - enemy.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+            // Source collection
+            sources.forEach(source => {
+                if (!source.collected) {
+                    const dist = Math.hypot(player.x - source.x, player.y - source.y);
+                    if (dist < 30) {
+                        source.collected = true;
+                        document.getElementById(`box-${source.id}`).classList.add('collected');
 
-                if (distance < player.width / 2 + enemy.size / 2) {
-                    endGame(false);
+                        // Particles
+                        for (let i = 0; i < 15; i++) {
+                            particles.push({
+                                x: source.x,
+                                y: source.y,
+                                vx: (Math.random() - 0.5) * 6,
+                                vy: (Math.random() - 0.5) * 6,
+                                life: 40,
+                                color: source.color
+                            });
+                        }
+
+                        // Check win
+                        if (sources.every(s => s.collected)) {
+                            gameState = 'win';
+                            showOverlay('TORAH RESTORED!', 'You collected all four<br>Documentary Hypothesis sources!<br><br>J + E + D + P = Torah', 'win');
+                        }
+                    }
                 }
+            });
+
+            // Update particles
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                p.life--;
+                return p.life > 0;
             });
         }
 
-        // Update score display
-        function updateScoreDisplay() {
-            document.getElementById('scoreValue').textContent = score;
+        function showOverlay(title, text, className) {
+            const overlay = document.getElementById('overlay');
+            const titleEl = document.getElementById('overlayTitle');
+            const textEl = document.getElementById('overlayText');
+
+            titleEl.textContent = title;
+            titleEl.className = className || '';
+            textEl.innerHTML = text;
+            document.getElementById('startBtn').textContent = 'PLAY AGAIN';
+            overlay.classList.remove('hidden');
         }
 
-        // End game
-        function endGame(won) {
-            gameRunning = false;
-            const message = document.getElementById('message');
-            const title = document.getElementById('messageTitle');
-            const text = document.getElementById('messageText');
+        // Draw
+        function draw() {
+            // Clear with dark background
+            ctx.fillStyle = '#0f0f23';
+            ctx.fillRect(0, 0, W, H);
 
-            if (won) {
-                title.textContent = 'Torah Reconstructed!';
-                title.style.color = '#4caf50';
-                text.textContent = `Congratulations! You collected all four sources and reconstructed the Documentary Hypothesis! Final Score: ${score}`;
-            } else {
-                title.textContent = 'Caught!';
-                title.style.color = '#f44336';
-                text.textContent = `The textual critics caught you! You collected ${sources.filter(s => s.collected).length}/4 sources. Score: ${score}`;
+            // Draw subtle grid pattern (ancient stone floor)
+            ctx.strokeStyle = '#1a1a3a';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += TILE) {
+                for (let y = 0; y < H; y += TILE) {
+                    ctx.strokeRect(x, y, TILE, TILE);
+                }
             }
 
-            message.style.display = 'block';
-        }
-
-        // Draw player (Biblical Detective)
-        function drawPlayer() {
-            const x = player.x;
-            const y = player.y;
-
-            // Body (coat)
-            ctx.fillStyle = '#2c2c2c';
-            ctx.beginPath();
-            ctx.moveTo(x - 12, y + 22);
-            ctx.lineTo(x - 8, y);
-            ctx.lineTo(x + 8, y);
-            ctx.lineTo(x + 12, y + 22);
-            ctx.closePath();
-            ctx.fill();
-
-            // Head
-            ctx.fillStyle = '#e8c4a0';
-            ctx.beginPath();
-            ctx.arc(x, y - 8, 10, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Detective hat
-            ctx.fillStyle = '#4a3728';
-            // Hat brim
-            ctx.beginPath();
-            ctx.ellipse(x, y - 15, 14, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Hat top
-            ctx.fillRect(x - 8, y - 26, 16, 12);
-            ctx.beginPath();
-            ctx.arc(x, y - 26, 8, Math.PI, 0);
-            ctx.fill();
-
-            // Magnifying glass
-            ctx.strokeStyle = '#8b4513';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x + 18, y + 5, 6, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x + 14, y + 10);
-            ctx.lineTo(x + 10, y + 16);
-            ctx.stroke();
-
-            // Eyes
-            ctx.fillStyle = '#333';
-            ctx.beginPath();
-            ctx.arc(x - 3, y - 9, 2, 0, Math.PI * 2);
-            ctx.arc(x + 3, y - 9, 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Draw sources (ancient scrolls)
-        function drawSources() {
+            // Draw sources
+            const time = Date.now() / 1000;
             sources.forEach(source => {
                 if (!source.collected) {
+                    const bob = Math.sin(time * 3 + source.bobOffset) * 4;
                     const x = source.x;
-                    const y = source.y;
-                    const size = SOURCE_SIZE;
+                    const y = source.y + bob;
 
-                    // Glow effect
+                    // Glow
                     ctx.shadowColor = source.color;
-                    ctx.shadowBlur = 15;
+                    ctx.shadowBlur = 20;
 
-                    // Scroll body
+                    // Scroll shape
                     ctx.fillStyle = '#f5e6d3';
                     ctx.beginPath();
-                    ctx.roundRect(x - size/2 + 5, y - size/2 + 3, size - 10, size - 6, 3);
+                    ctx.roundRect(x - 18, y - 12, 36, 24, 4);
                     ctx.fill();
 
                     // Scroll ends
-                    ctx.fillStyle = source.borderColor;
+                    ctx.fillStyle = source.color;
                     ctx.beginPath();
-                    ctx.arc(x - size/2 + 5, y, size/2 - 3, Math.PI/2, -Math.PI/2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(x + size/2 - 5, y, size/2 - 3, -Math.PI/2, Math.PI/2);
+                    ctx.arc(x - 16, y, 8, 0, Math.PI * 2);
+                    ctx.arc(x + 16, y, 8, 0, Math.PI * 2);
                     ctx.fill();
 
                     ctx.shadowBlur = 0;
 
                     // Letter
-                    ctx.fillStyle = source.borderColor;
-                    ctx.font = 'bold 18px Georgia';
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.font = 'bold 16px "Press Start 2P", monospace';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(source.id.toUpperCase(), x, y + 1);
+                    ctx.fillText(source.id.toUpperCase(), x, y + 2);
                 }
             });
-        }
 
-        // Draw enemies (Critics represented as floating question marks with angry expressions)
-        function drawEnemies() {
+            // Draw enemies (scrollworms)
             enemies.forEach(enemy => {
-                const x = enemy.x;
-                const y = enemy.y;
-                const size = enemy.size;
+                // Draw segments back to front
+                for (let i = enemy.segments.length - 1; i >= 0; i--) {
+                    const seg = enemy.segments[i];
+                    const size = i === 0 ? 14 : 10 - i * 0.5;
 
-                // Body (dark robe)
-                ctx.fillStyle = '#1a1a2e';
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
+                    // Body
+                    ctx.fillStyle = i === 0 ? '#8b0000' : '#5c1010';
+                    ctx.beginPath();
+                    ctx.arc(seg.x, seg.y, size, 0, Math.PI * 2);
+                    ctx.fill();
 
-                // Red glow
-                ctx.strokeStyle = '#ff4444';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(x, y, size + 2, 0, Math.PI * 2);
-                ctx.stroke();
+                    // Highlight
+                    ctx.fillStyle = '#a02020';
+                    ctx.beginPath();
+                    ctx.arc(seg.x - 2, seg.y - 2, size * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
 
-                // Question mark
-                ctx.fillStyle = '#ff6b6b';
-                ctx.font = 'bold 24px Georgia';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('?', x, y + 2);
+                    // Eyes on head
+                    if (i === 0) {
+                        const eyeAng = enemy.angle;
+                        ctx.fillStyle = '#ffff00';
+                        ctx.beginPath();
+                        ctx.arc(seg.x + Math.cos(eyeAng - 0.4) * 6, seg.y + Math.sin(eyeAng - 0.4) * 6, 3, 0, Math.PI * 2);
+                        ctx.arc(seg.x + Math.cos(eyeAng + 0.4) * 6, seg.y + Math.sin(eyeAng + 0.4) * 6, 3, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(seg.x + Math.cos(eyeAng - 0.4) * 7, seg.y + Math.sin(eyeAng - 0.4) * 7, 1.5, 0, Math.PI * 2);
+                        ctx.arc(seg.x + Math.cos(eyeAng + 0.4) * 7, seg.y + Math.sin(eyeAng + 0.4) * 7, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
             });
-        }
 
-        // Draw decorative elements
-        function drawBackground() {
-            // Ancient manuscript texture pattern
-            ctx.fillStyle = 'rgba(139, 69, 19, 0.05)';
-            for (let i = 0; i < 20; i++) {
-                ctx.beginPath();
-                ctx.arc(
-                    (i * 50) % CANVAS_WIDTH,
-                    Math.floor(i / 16) * 50 + 25,
-                    2,
-                    0,
-                    Math.PI * 2
+            // Draw player
+            const sprite = spriteCanvases[player.frame] || spriteCanvases['idle'];
+            const flashOn = invincible > 0 && Math.floor(invincible / 4) % 2 === 0;
+
+            if (!flashOn) {
+                ctx.drawImage(
+                    sprite,
+                    player.x - sprite.width / 2,
+                    player.y - sprite.height / 2 - 5
                 );
-                ctx.fill();
             }
+
+            // Draw particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life / 40;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+            });
+            ctx.globalAlpha = 1;
         }
 
-        // Main game loop
+        // Game loop
         function gameLoop() {
-            // Clear canvas
-            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-            // Draw background
-            drawBackground();
-
-            if (gameRunning) {
-                // Update
-                updatePlayer();
-                updateEnemies();
-                checkCollisions();
-
-                // Increment score over time
-                score += 1;
-                if (score % 10 === 0) updateScoreDisplay();
-            }
-
-            // Draw everything
-            drawSources();
-            drawEnemies();
-            drawPlayer();
-
-            // Continue loop
+            update();
+            draw();
             requestAnimationFrame(gameLoop);
         }
 
-        // Start the game
-        init();
         gameLoop();
     </script>
 </body>
