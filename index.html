@@ -817,13 +817,30 @@ class Game {
         this.texts = [];
         this.boss = null;
 
+        // Source scroll fragments to collect!
+        const fragmentCount = 3 + LEVELS.indexOf(level);
+        this.scrolls = [];
+        this.scrollsTotal = fragmentCount;
+        this.scrollsCollected = 0;
+        this.bossUnlocked = false;
+        for (let i = 0; i < fragmentCount; i++) {
+            this.scrolls.push({
+                x: 80 + Math.random() * (W - 160),
+                y: 100 + Math.random() * (H - 180),
+                collected: false,
+                pulse: Math.random() * Math.PI * 2,
+                spawnDelay: i * 120 + 60, // stagger appearance
+                visible: i === 0 // first one visible right away
+            });
+        }
+
         // Show level intro
         this.showCutscene([
             level.name,
             level.subtitle,
-            `Survive ${level.waves} waves`,
-            `Defeat ${level.bossName}`,
-            "Good luck, Detective!"
+            `Find ${fragmentCount} scroll fragments!`,
+            `Collect them all, then defeat`,
+            `${level.bossName}!`
         ], GameState.PLAYING);
     }
 
@@ -851,6 +868,9 @@ class Game {
         // Update particles
         this.updateParticles(dt);
 
+        // Update scroll collectibles
+        this.updateScrolls(dt);
+
         // Update texts
         this.texts = this.texts.filter(t => {
             t.y += t.vy * dt;
@@ -858,14 +878,14 @@ class Game {
             return t.life > 0;
         });
 
-        // Wave management
+        // Wave management - keep spawning enemies until all scrolls collected
         this.waveTimer -= dt;
         if (this.waveTimer <= 0 && this.enemies.length === 0) {
-            this.wave++;
-            if (this.wave > this.currentLevel.waves) {
-                // Boss time!
+            if (this.bossUnlocked) {
+                // All scrolls collected - boss time!
                 this.startBoss();
             } else {
+                this.wave++;
                 this.startWave();
             }
         }
@@ -877,6 +897,107 @@ class Game {
                 this.player.combo = 0;
             }
         }
+    }
+
+    updateScrolls(dt) {
+        const p = this.player;
+        const level = this.currentLevel;
+        const magnetRange = this.baseStats.magnet;
+
+        this.scrolls.forEach((scroll, idx) => {
+            if (scroll.collected) return;
+
+            // Reveal scrolls over time
+            if (!scroll.visible) {
+                scroll.spawnDelay -= dt;
+                if (scroll.spawnDelay <= 0) {
+                    scroll.visible = true;
+                    // Announce it
+                    this.texts.push({
+                        x: scroll.x, y: scroll.y - 30,
+                        text: `FRAGMENT ${idx + 1}!`,
+                        color: level.color,
+                        life: 80, vy: -1, size: 10
+                    });
+                    // Spawn particles to draw attention
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (i / 12) * Math.PI * 2;
+                        this.particles.push({
+                            x: scroll.x, y: scroll.y,
+                            vx: Math.cos(angle) * 3,
+                            vy: Math.sin(angle) * 3,
+                            life: 30, color: level.color, size: 4
+                        });
+                    }
+                }
+                return;
+            }
+
+            scroll.pulse += 0.08 * dt;
+
+            // Magnet pull
+            const dist = Math.hypot(p.x - scroll.x, p.y - scroll.y);
+            if (magnetRange > 0 && dist < magnetRange && dist > 30) {
+                const angle = Math.atan2(p.y - scroll.y, p.x - scroll.x);
+                scroll.x += Math.cos(angle) * 1.5;
+                scroll.y += Math.sin(angle) * 1.5;
+            }
+
+            // Collect!
+            if (dist < 35) {
+                scroll.collected = true;
+                this.scrollsCollected++;
+                this.levelScore += 500;
+                audio.playCollect();
+                this.screenShake = 8;
+
+                // Big collection effect
+                for (let i = 0; i < 25; i++) {
+                    const angle = (i / 25) * Math.PI * 2;
+                    this.particles.push({
+                        x: scroll.x, y: scroll.y,
+                        vx: Math.cos(angle) * (2 + Math.random() * 4),
+                        vy: Math.sin(angle) * (2 + Math.random() * 4),
+                        life: 40, color: level.color, size: 4 + Math.random() * 4
+                    });
+                }
+
+                this.texts.push({
+                    x: scroll.x, y: scroll.y - 20,
+                    text: `${level.id.toUpperCase()} FRAGMENT ${this.scrollsCollected}/${this.scrollsTotal}`,
+                    color: level.color,
+                    life: 80, vy: -1.5, size: 12
+                });
+                this.texts.push({
+                    x: scroll.x, y: scroll.y + 10,
+                    text: '+500',
+                    color: '#fff',
+                    life: 50, vy: -2, size: 10
+                });
+
+                // All scrolls collected?
+                if (this.scrollsCollected >= this.scrollsTotal) {
+                    this.bossUnlocked = true;
+                    this.flash = 1;
+                    this.flashColor = level.color;
+                    this.screenShake = 20;
+                    audio.playPowerup();
+
+                    this.texts.push({
+                        x: W / 2, y: H / 2 - 40,
+                        text: `ALL FRAGMENTS FOUND!`,
+                        color: '#feca57',
+                        life: 120, vy: 0, size: 16
+                    });
+                    this.texts.push({
+                        x: W / 2, y: H / 2,
+                        text: `PREPARE FOR BOSS!`,
+                        color: '#e74c3c',
+                        life: 120, vy: 0, size: 14
+                    });
+                }
+            }
+        });
     }
 
     updatePlayer(dt) {
@@ -956,20 +1077,29 @@ class Game {
     }
 
     startWave() {
-        this.waveTimer = 999999; // Don't auto-advance
-        this.waveEnemies = 3 + this.wave * 2;
+        this.waveTimer = 999999; // Don't auto-advance until enemies cleared
+        // Fewer enemies per wave so it's about dodging to get scrolls, not grinding
+        this.waveEnemies = 2 + Math.min(this.wave, 5);
         audio.playWave();
 
         this.texts.push({
             x: W/2, y: H/2,
             text: `WAVE ${this.wave}`,
             color: this.currentLevel.color,
-            life: 90, vy: 0, size: 24
+            life: 60, vy: -0.5, size: 20
         });
 
         // Spawn enemies
         for (let i = 0; i < this.waveEnemies; i++) {
-            setTimeout(() => this.spawnEnemy(), i * 200);
+            setTimeout(() => this.spawnEnemy(), i * 300);
+        }
+
+        // Reveal next scroll on certain waves
+        if (this.scrolls) {
+            const nextHidden = this.scrolls.find(s => !s.visible && !s.collected);
+            if (nextHidden) {
+                nextHidden.spawnDelay = Math.min(nextHidden.spawnDelay, 90);
+            }
         }
     }
 
@@ -1864,6 +1994,70 @@ class Game {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
+        // Source scroll fragments
+        if (this.scrolls) {
+            const level = this.currentLevel;
+            this.scrolls.forEach((scroll, idx) => {
+                if (scroll.collected || !scroll.visible) return;
+
+                const bob = Math.sin(scroll.pulse) * 5;
+                const glow = Math.sin(scroll.pulse * 2) * 0.3 + 0.7;
+                const x = scroll.x, y = scroll.y + bob;
+
+                // Pulsing glow ring
+                ctx.strokeStyle = level.color;
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.3 + glow * 0.3;
+                ctx.beginPath();
+                ctx.arc(x, y, 28 + Math.sin(scroll.pulse) * 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                // Outer glow
+                ctx.shadowColor = level.color;
+                ctx.shadowBlur = 20 * glow;
+
+                // Scroll parchment body
+                ctx.fillStyle = '#f5e6c8';
+                ctx.beginPath();
+                ctx.roundRect(x - 22, y - 14, 44, 28, 4);
+                ctx.fill();
+
+                // Scroll rollers (colored ends)
+                ctx.fillStyle = level.color;
+                ctx.beginPath();
+                ctx.arc(x - 20, y, 10, 0, Math.PI * 2);
+                ctx.arc(x + 20, y, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Source letter
+                ctx.fillStyle = level.darkColor;
+                ctx.font = 'bold 16px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(level.id.toUpperCase(), x, y + 2);
+                ctx.textBaseline = 'alphabetic';
+
+                // Fragment number
+                ctx.fillStyle = '#fff';
+                ctx.font = '6px "Press Start 2P"';
+                ctx.fillText(`${idx + 1}`, x, y - 20);
+
+                // Sparkle particles
+                if (Math.random() < 0.1) {
+                    this.particles.push({
+                        x: x + (Math.random() - 0.5) * 40,
+                        y: y + (Math.random() - 0.5) * 30,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: -1 - Math.random(),
+                        life: 25, color: level.color, size: 3
+                    });
+                }
+            });
+        }
+
         // Pickups
         this.pickups.forEach(pk => {
             const bob = Math.sin(this.time * 0.1 + pk.x) * 3;
@@ -2026,12 +2220,29 @@ class Game {
         ctx.textAlign = 'right';
         ctx.fillText(`${this.levelScore}`, W - 15, 30);
 
-        // Wave
+        // Scroll collection progress
         ctx.fillStyle = level.color;
         ctx.textAlign = 'center';
         ctx.font = '10px "Press Start 2P"';
+        if (this.scrolls) {
+            const collected = this.scrollsCollected || 0;
+            const total = this.scrollsTotal || 0;
+            ctx.fillText(`${level.id.toUpperCase()} SCROLLS: ${collected}/${total}`, W/2, 25);
+            // Scroll bar
+            ctx.fillStyle = '#333';
+            ctx.fillRect(W/2 - 60, 32, 120, 8);
+            ctx.fillStyle = level.color;
+            ctx.fillRect(W/2 - 60, 32, 120 * (collected / Math.max(1, total)), 8);
+            ctx.strokeStyle = level.color + '80';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(W/2 - 60, 32, 120, 8);
+        }
+
+        // Wave counter (smaller, below scroll bar)
+        ctx.fillStyle = '#666';
+        ctx.font = '8px "Press Start 2P"';
         if (this.state === GameState.PLAYING) {
-            ctx.fillText(`WAVE ${this.wave}/${this.currentLevel.waves}`, W/2, 30);
+            ctx.fillText(`WAVE ${this.wave}`, W/2, 52);
         }
 
         // Combo
@@ -2039,6 +2250,35 @@ class Game {
             ctx.fillStyle = '#feca57';
             ctx.font = '12px "Press Start 2P"';
             ctx.fillText(`${p.combo}x`, W - 15, 55);
+        }
+
+        // Arrow pointing to nearest uncollected scroll
+        if (this.scrolls) {
+            const nearest = this.scrolls.filter(s => !s.collected && s.visible)
+                .sort((a, b) => Math.hypot(p.x - a.x, p.y - a.y) - Math.hypot(p.x - b.x, p.y - b.y))[0];
+            if (nearest) {
+                const dist = Math.hypot(p.x - nearest.x, p.y - nearest.y);
+                if (dist > 80) {
+                    const angle = Math.atan2(nearest.y - p.y, nearest.x - p.x);
+                    const arrowDist = 45;
+                    const ax = p.x + Math.cos(angle) * arrowDist;
+                    const ay = p.y + Math.sin(angle) * arrowDist;
+
+                    ctx.save();
+                    ctx.translate(ax, ay);
+                    ctx.rotate(angle);
+                    ctx.fillStyle = level.color;
+                    ctx.globalAlpha = 0.6 + Math.sin(this.time * 0.15) * 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(10, 0);
+                    ctx.lineTo(-5, -6);
+                    ctx.lineTo(-5, 6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                }
+            }
         }
 
         // Dash meter
