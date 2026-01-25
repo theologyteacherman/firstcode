@@ -4,45 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Biblical Detective: Documentary Hypothesis Quest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #1a1a2e;
+            background: #0a0a1a;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Press Start 2P', 'Courier New', monospace;
+            font-family: 'Press Start 2P', monospace;
             color: #fff;
-            image-rendering: pixelated;
-        }
-
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
-        h1 {
-            font-size: 1.5em;
-            margin-bottom: 5px;
-            color: #feca57;
-            text-shadow: 3px 3px 0 #c44;
-        }
-
-        .subtitle {
-            font-size: 0.6em;
-            margin-bottom: 15px;
-            color: #a0a0a0;
+            overflow: hidden;
         }
 
         #gameContainer {
             position: relative;
             border: 4px solid #feca57;
-            box-shadow: 0 0 0 4px #222, 0 0 20px rgba(254, 202, 87, 0.3);
-            background: #0f0f23;
+            box-shadow: 0 0 0 4px #222, 0 0 40px rgba(254, 202, 87, 0.4);
         }
 
         #gameCanvas {
@@ -51,431 +32,1142 @@
             image-rendering: crisp-edges;
         }
 
-        #hud {
-            display: flex;
-            justify-content: space-between;
-            width: 640px;
-            padding: 10px 5px;
-            font-size: 0.7em;
-        }
-
-        #sourceDisplay {
-            display: flex;
-            gap: 8px;
-        }
-
-        .source-box {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #444;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1em;
-            opacity: 0.3;
-            transition: all 0.2s;
-        }
-
-        .source-box.collected {
-            opacity: 1;
-            animation: pulse 0.5s ease;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
-        .source-j { border-color: #f1c40f; color: #f1c40f; }
-        .source-e { border-color: #2ecc71; color: #2ecc71; }
-        .source-d { border-color: #3498db; color: #3498db; }
-        .source-p { border-color: #9b59b6; color: #9b59b6; }
-
-        .source-box.collected.source-j { background: rgba(241, 196, 15, 0.3); box-shadow: 0 0 10px #f1c40f; }
-        .source-box.collected.source-e { background: rgba(46, 204, 113, 0.3); box-shadow: 0 0 10px #2ecc71; }
-        .source-box.collected.source-d { background: rgba(52, 152, 219, 0.3); box-shadow: 0 0 10px #3498db; }
-        .source-box.collected.source-p { background: rgba(155, 89, 182, 0.3); box-shadow: 0 0 10px #9b59b6; }
-
-        #lives {
-            color: #e74c3c;
-        }
-
-        #controls {
-            font-size: 0.5em;
-            color: #666;
-            margin-top: 10px;
-        }
-
         #overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.92);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 10;
+            transition: opacity 0.3s;
         }
 
         #overlay.hidden {
-            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #overlay h1 {
+            font-size: 1.8em;
+            color: #feca57;
+            text-shadow: 4px 4px 0 #8b4513;
+            margin-bottom: 10px;
         }
 
         #overlay h2 {
-            font-size: 1.2em;
-            margin-bottom: 20px;
-            color: #feca57;
+            font-size: 1em;
+            color: #ccc;
+            margin-bottom: 30px;
         }
 
-        #overlay p {
-            font-size: 0.6em;
-            margin-bottom: 15px;
+        #overlay .info {
+            font-size: 0.55em;
+            line-height: 2.2;
             text-align: center;
-            line-height: 1.8;
-            max-width: 80%;
+            margin-bottom: 25px;
+            color: #aaa;
+        }
+
+        #overlay .sources-preview {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        #overlay .source-item {
+            text-align: center;
+            font-size: 0.5em;
+        }
+
+        #overlay .source-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            margin-bottom: 5px;
         }
 
         #overlay button {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.7em;
-            padding: 15px 30px;
-            background: #feca57;
+            font-size: 0.8em;
+            padding: 18px 40px;
+            background: linear-gradient(180deg, #feca57 0%, #d4a53a 100%);
             color: #1a1a2e;
             border: none;
             cursor: pointer;
-            margin-top: 10px;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 4px 0 #8b4513;
         }
 
         #overlay button:hover {
-            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #8b4513;
         }
 
-        .win { color: #2ecc71 !important; }
-        .lose { color: #e74c3c !important; }
+        #overlay button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #8b4513;
+        }
+
+        .win-title { color: #2ecc71 !important; text-shadow: 4px 4px 0 #1a5c31 !important; }
+        .lose-title { color: #e74c3c !important; text-shadow: 4px 4px 0 #5c1a1a !important; }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.5em;
+            color: #555;
+        }
     </style>
 </head>
 <body>
-    <h1>BIBLICAL DETECTIVE</h1>
-    <p class="subtitle">THE DOCUMENTARY HYPOTHESIS QUEST</p>
-
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="640" height="480"></canvas>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="overlay">
-            <h2 id="overlayTitle">BIBLICAL DETECTIVE</h2>
-            <p id="overlayText">
-                Collect the four sources of the<br>
-                Documentary Hypothesis!<br><br>
-                J - Jahwist | E - Elohist<br>
-                D - Deuteronomist | P - Priestly<br><br>
-                Avoid the ancient scrollworms!
-            </p>
-            <button id="startBtn">START GAME</button>
+            <h1>BIBLICAL DETECTIVE</h1>
+            <h2>Documentary Hypothesis Quest</h2>
+            <div class="info">
+                Collect the four ancient sources<br>
+                to reconstruct the Torah!<br><br>
+                Avoid the Scrollworms!
+            </div>
+            <div class="sources-preview">
+                <div class="source-item">
+                    <div class="source-icon" style="background:#f1c40f;color:#5d4e00;">J</div>
+                    <div>Jahwist</div>
+                </div>
+                <div class="source-item">
+                    <div class="source-icon" style="background:#2ecc71;color:#1a5c31;">E</div>
+                    <div>Elohist</div>
+                </div>
+                <div class="source-item">
+                    <div class="source-icon" style="background:#3498db;color:#1a3c5c;">D</div>
+                    <div>Deutero</div>
+                </div>
+                <div class="source-item">
+                    <div class="source-icon" style="background:#9b59b6;color:#3d1a4a;">P</div>
+                    <div>Priestly</div>
+                </div>
+            </div>
+            <button id="startBtn">START QUEST</button>
+            <div id="controls-hint">Arrow Keys or WASD to move | SPACE to dash</div>
         </div>
     </div>
-
-    <div id="hud">
-        <div id="sourceDisplay">
-            <div class="source-box source-j" id="box-j">J</div>
-            <div class="source-box source-e" id="box-e">E</div>
-            <div class="source-box source-d" id="box-d">D</div>
-            <div class="source-box source-p" id="box-p">P</div>
-        </div>
-        <div id="lives">♥♥♥</div>
-    </div>
-
-    <p id="controls">ARROW KEYS or WASD to move</p>
 
     <script>
+        // ============================================
+        // BIBLICAL DETECTIVE - DOCUMENTARY HYPOTHESIS QUEST
+        // ============================================
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
 
         const W = canvas.width;
         const H = canvas.height;
-        const TILE = 32;
 
-        // Sprite data - Biblical Detective (your pixel art character!)
-        // 5 frames: idle, walk1, walk2, walk3, walk4
-        const SPRITE_DATA = {
-            // Each sprite is 16x24 pixels, scaled up 2x to 32x48
-            width: 16,
-            height: 24,
-            scale: 2,
+        // ============================================
+        // SPRITE SYSTEM - Pixel art detective with animations
+        // ============================================
+        const SPRITE = {
+            scale: 3,
             frames: {
-                // Frame data as pixel arrays - detective with hat and coat
-                idle: [
-                    "................",
-                    "................",
-                    "....444444......",
-                    "...4444444......",
-                    "...4444444......",
-                    "....FFFF........",
-                    "....FEEF........",
-                    "....FFFF........",
-                    ".....FF.........",
-                    "...222222.......",
-                    "...223222.......",
-                    "...222222.......",
-                    "...222222.......",
-                    "....2222........",
-                    "....2..2........",
-                    "....2..2........",
-                    "....5..5........",
-                    "....5..5........",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
+                // Standing - facing right
+                standR: [
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FBBF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    ".....222222.....",
+                    "......2222......",
+                    "......2..2......",
+                    "......2..2......",
+                    "......5..5......",
                     "................"
                 ],
+                // Standing - facing left
+                standL: [
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FBBF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    ".....222222.....",
+                    "......2222......",
+                    "......2..2......",
+                    "......2..2......",
+                    "......5..5......",
+                    "................"
+                ],
+                // Walk right frame 1
                 walkR1: [
-                    "................",
-                    "................",
-                    ".....444444.....",
-                    "....4444444.....",
-                    "....4444444.....",
-                    ".....FFFF.......",
-                    ".....FEFF.......",
-                    ".....FFFF.......",
-                    "......FF........",
-                    "....222222......",
-                    "....223222......",
-                    "....222222......",
-                    "....222222......",
-                    ".....2222.......",
-                    ".....2.2........",
-                    "....2...2.......",
-                    "....5...5.......",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FBFF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    "......2222......",
+                    "......2222......",
+                    ".....2....2.....",
+                    ".....2....2.....",
+                    ".....5....5.....",
                     "................"
                 ],
+                // Walk right frame 2
                 walkR2: [
-                    "................",
-                    "................",
-                    ".....444444.....",
-                    "....4444444.....",
-                    "....4444444.....",
-                    ".....FFFF.......",
-                    ".....FEFF.......",
-                    ".....FFFF.......",
-                    "......FF........",
-                    "....222222......",
-                    "....223222......",
-                    "....222222......",
-                    "....222222......",
-                    ".....2222.......",
-                    "......22........",
-                    ".....2..2.......",
-                    ".....5..5.......",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FBFF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    "......2222......",
+                    ".......22.......",
+                    "......2..2......",
+                    "......2..2......",
+                    "......5..5......",
                     "................"
                 ],
+                // Walk left frame 1
                 walkL1: [
-                    "................",
-                    "................",
-                    ".....444444.....",
-                    ".....4444444....",
-                    ".....4444444....",
-                    ".......FFFF.....",
-                    ".......FFEF.....",
-                    ".......FFFF.....",
-                    "........FF......",
-                    "......222222....",
-                    "......222322....",
-                    "......222222....",
-                    "......222222....",
-                    ".......2222.....",
-                    "........2.2.....",
-                    ".......2...2....",
-                    ".......5...5....",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FFBF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    "......2222......",
+                    "......2222......",
+                    ".....2....2.....",
+                    ".....2....2.....",
+                    ".....5....5.....",
                     "................"
                 ],
+                // Walk left frame 2
                 walkL2: [
-                    "................",
-                    "................",
-                    ".....444444.....",
-                    ".....4444444....",
-                    ".....4444444....",
-                    ".......FFFF.....",
-                    ".......FFEF.....",
-                    ".......FFFF.....",
-                    "........FF......",
-                    "......222222....",
-                    "......222322....",
-                    "......222222....",
-                    "......222222....",
-                    ".......2222.....",
-                    "........22......",
-                    ".......2..2.....",
-                    ".......5..5.....",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
-                    "................",
+                    "......####......",
+                    ".....######.....",
+                    ".....######.....",
+                    "......####......",
+                    "......FFFF......",
+                    "......FFBF......",
+                    "......FFFF......",
+                    ".......FF.......",
+                    ".....222222.....",
+                    ".....222222.....",
+                    ".....223322.....",
+                    ".....222222.....",
+                    "......2222......",
+                    ".......22.......",
+                    "......2..2......",
+                    "......2..2......",
+                    "......5..5......",
                     "................"
                 ]
             },
             colors: {
-                '.': null,           // transparent
-                '4': '#4a3728',      // hat (brown)
-                'F': '#e8c4a0',      // face (skin)
-                'E': '#333333',      // eyes
-                '2': '#2c2c5c',      // coat (dark blue)
-                '3': '#feca57',      // coat button/detail
-                '5': '#1a1a2e'       // shoes
+                '.': null,
+                '#': '#4a3728',  // Hat
+                'F': '#e8c4a0',  // Face
+                'B': '#222222',  // Eyes
+                '2': '#2c2c6c',  // Coat
+                '3': '#feca57',  // Button
+                '5': '#1a1a3e'   // Shoes
             }
         };
 
-        // Pre-render sprites to canvases
-        const spriteCanvases = {};
-
+        // Pre-render all sprites
+        const sprites = {};
         function renderSprite(frameData, colors, scale) {
             const w = frameData[0].length;
             const h = frameData.length;
-            const spriteCanvas = document.createElement('canvas');
-            spriteCanvas.width = w * scale;
-            spriteCanvas.height = h * scale;
-            const sctx = spriteCanvas.getContext('2d');
-
+            const c = document.createElement('canvas');
+            c.width = w * scale;
+            c.height = h * scale;
+            const cx = c.getContext('2d');
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
-                    const char = frameData[y][x];
-                    const color = colors[char];
-                    if (color) {
-                        sctx.fillStyle = color;
-                        sctx.fillRect(x * scale, y * scale, scale, scale);
+                    const col = colors[frameData[y][x]];
+                    if (col) {
+                        cx.fillStyle = col;
+                        cx.fillRect(x * scale, y * scale, scale, scale);
                     }
                 }
             }
-            return spriteCanvas;
+            return c;
         }
 
-        // Initialize sprite canvases
-        Object.keys(SPRITE_DATA.frames).forEach(key => {
-            spriteCanvases[key] = renderSprite(
-                SPRITE_DATA.frames[key],
-                SPRITE_DATA.colors,
-                SPRITE_DATA.scale
-            );
+        Object.keys(SPRITE.frames).forEach(k => {
+            sprites[k] = renderSprite(SPRITE.frames[k], SPRITE.colors, SPRITE.scale);
         });
 
-        // Game state
-        let gameState = 'menu'; // menu, playing, win, lose
-        let lives = 3;
-        let invincible = 0;
+        // ============================================
+        // GAME STATE
+        // ============================================
+        let gameState = 'menu';
+        let level = 1;
+        let score = 0;
+        let highScore = localStorage.getItem('biblicalDetectiveHS') || 0;
+        let screenShake = 0;
+        let slowMo = 0;
 
         // Player
         const player = {
-            x: W / 2,
-            y: H / 2,
-            vx: 0,
-            vy: 0,
-            speed: 3.5,
-            width: 28,
-            height: 40,
-            frame: 'idle',
+            x: W / 2, y: H / 2,
+            vx: 0, vy: 0,
+            speed: 4,
+            width: 32, height: 48,
+            facing: 'R',
+            frame: 'standR',
             animTimer: 0,
-            facing: 'right'
+            lives: 3,
+            maxLives: 5,
+            invincible: 0,
+            dashCooldown: 0,
+            dashTimer: 0,
+            trail: []
         };
 
         // Sources
-        const sources = [
-            { id: 'j', name: 'Jahwist', color: '#f1c40f', x: 0, y: 0, collected: false, bobOffset: 0 },
-            { id: 'e', name: 'Elohist', color: '#2ecc71', x: 0, y: 0, collected: false, bobOffset: Math.PI/2 },
-            { id: 'd', name: 'Deuteronomist', color: '#3498db', x: 0, y: 0, collected: false, bobOffset: Math.PI },
-            { id: 'p', name: 'Priestly', color: '#9b59b6', x: 0, y: 0, collected: false, bobOffset: Math.PI*1.5 }
+        const sourceData = [
+            { id: 'j', name: 'Jahwist', color: '#f1c40f', dark: '#8b7000' },
+            { id: 'e', name: 'Elohist', color: '#2ecc71', dark: '#1a8c4a' },
+            { id: 'd', name: 'Deuteronomist', color: '#3498db', dark: '#1a5c8c' },
+            { id: 'p', name: 'Priestly', color: '#9b59b6', dark: '#5c2a6c' }
         ];
+        let sources = [];
 
-        // Enemies (Scrollworms - snake-like ancient creatures)
+        // Enemies
         let enemies = [];
+        let enemySpawnTimer = 0;
 
-        // Particles
+        // Particles & Effects
         let particles = [];
+        let floatingTexts = [];
+        let collectEffects = [];
+
+        // Powerups
+        let powerups = [];
+        const POWERUP_TYPES = ['speed', 'shield', 'freeze', 'life'];
 
         // Input
         const keys = {};
+        const keysPressed = {};
 
-        // Initialize
-        function init() {
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        function initGame() {
             player.x = W / 2;
             player.y = H / 2;
             player.vx = 0;
             player.vy = 0;
-            lives = 3;
-            invincible = 0;
-            updateLivesDisplay();
+            player.lives = 3;
+            player.invincible = 0;
+            player.dashCooldown = 0;
+            player.dashTimer = 0;
+            player.trail = [];
+            player.facing = 'R';
+            player.frame = 'standR';
 
-            // Reset sources
+            level = 1;
+            score = 0;
+            screenShake = 0;
+            slowMo = 0;
+
+            // Place sources
+            sources = sourceData.map((s, i) => ({
+                ...s,
+                x: 100 + (i % 2) * (W - 200),
+                y: 100 + Math.floor(i / 2) * (H - 200),
+                collected: false,
+                pulse: Math.random() * Math.PI * 2,
+                sparkles: []
+            }));
+
+            // Spread them out more randomly
             sources.forEach(s => {
-                s.collected = false;
-                s.x = 60 + Math.random() * (W - 120);
-                s.y = 60 + Math.random() * (H - 120);
-                document.getElementById(`box-${s.id}`).classList.remove('collected');
+                s.x = 80 + Math.random() * (W - 160);
+                s.y = 80 + Math.random() * (H - 160);
             });
 
-            // Create enemies
             enemies = [];
-            for (let i = 0; i < 4; i++) {
-                createEnemy();
+            particles = [];
+            floatingTexts = [];
+            collectEffects = [];
+            powerups = [];
+            enemySpawnTimer = 120;
+
+            // Initial enemies
+            for (let i = 0; i < 2 + level; i++) {
+                spawnEnemy();
             }
 
-            particles = [];
             gameState = 'playing';
             document.getElementById('overlay').classList.add('hidden');
         }
 
-        function createEnemy() {
-            const segments = [];
-            const startX = Math.random() < 0.5 ? -30 : W + 30;
-            const startY = Math.random() * H;
-            const angle = Math.atan2(H/2 - startY, W/2 - startX) + (Math.random() - 0.5);
+        // ============================================
+        // ENEMY SYSTEM
+        // ============================================
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y, angle;
 
-            for (let i = 0; i < 8; i++) {
+            switch (side) {
+                case 0: x = -40; y = Math.random() * H; break;
+                case 1: x = W + 40; y = Math.random() * H; break;
+                case 2: x = Math.random() * W; y = -40; break;
+                case 3: x = Math.random() * W; y = H + 40; break;
+            }
+
+            angle = Math.atan2(player.y - y, player.x - x);
+
+            const segments = [];
+            const segCount = 6 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < segCount; i++) {
                 segments.push({
-                    x: startX - i * 12 * Math.cos(angle),
-                    y: startY - i * 12 * Math.sin(angle)
+                    x: x - i * 14 * Math.cos(angle),
+                    y: y - i * 14 * Math.sin(angle)
                 });
             }
 
             enemies.push({
-                segments: segments,
-                speed: 1.5 + Math.random(),
-                angle: angle,
-                turnTimer: 0,
-                turnDir: Math.random() < 0.5 ? 1 : -1
+                segments,
+                speed: 1.2 + Math.random() * 0.8 + level * 0.15,
+                angle,
+                turnSpeed: 0.02 + Math.random() * 0.02,
+                wobble: Math.random() * Math.PI * 2,
+                frozen: 0,
+                type: Math.random() < 0.2 ? 'fast' : 'normal'
             });
         }
 
-        function updateLivesDisplay() {
-            document.getElementById('lives').textContent = '♥'.repeat(lives) + '♡'.repeat(3 - lives);
+        function updateEnemies(dt) {
+            enemies.forEach(enemy => {
+                if (enemy.frozen > 0) {
+                    enemy.frozen -= dt;
+                    return;
+                }
+
+                enemy.wobble += 0.1;
+
+                // Home towards player
+                const head = enemy.segments[0];
+                const toPlayer = Math.atan2(player.y - head.y, player.x - head.x);
+                let angleDiff = toPlayer - enemy.angle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                const turnRate = enemy.type === 'fast' ? 0.04 : enemy.turnSpeed;
+                enemy.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate);
+                enemy.angle += Math.sin(enemy.wobble) * 0.01;
+
+                const speed = enemy.type === 'fast' ? enemy.speed * 1.5 : enemy.speed;
+                head.x += Math.cos(enemy.angle) * speed * dt;
+                head.y += Math.sin(enemy.angle) * speed * dt;
+
+                // Segments follow
+                for (let i = 1; i < enemy.segments.length; i++) {
+                    const prev = enemy.segments[i - 1];
+                    const curr = enemy.segments[i];
+                    const dist = Math.hypot(prev.x - curr.x, prev.y - curr.y);
+                    if (dist > 14) {
+                        const a = Math.atan2(prev.y - curr.y, prev.x - curr.x);
+                        curr.x += Math.cos(a) * (dist - 14);
+                        curr.y += Math.sin(a) * (dist - 14);
+                    }
+                }
+
+                // Wrap
+                if (head.x < -60) head.x = W + 60;
+                if (head.x > W + 60) head.x = -60;
+                if (head.y < -60) head.y = H + 60;
+                if (head.y > H + 60) head.y = -60;
+
+                // Collision with player
+                if (player.invincible <= 0 && player.dashTimer <= 0) {
+                    for (const seg of enemy.segments) {
+                        if (Math.hypot(player.x - seg.x, player.y - seg.y) < 22) {
+                            hitPlayer();
+                            break;
+                        }
+                    }
+                }
+            });
+
+            // Spawn new enemies
+            enemySpawnTimer -= dt;
+            if (enemySpawnTimer <= 0 && enemies.length < 6 + level * 2) {
+                spawnEnemy();
+                enemySpawnTimer = Math.max(60, 180 - level * 15);
+            }
         }
 
-        // Input handlers
+        function hitPlayer() {
+            player.lives--;
+            player.invincible = 120;
+            screenShake = 15;
+            slowMo = 10;
+
+            // Knockback
+            const nearestEnemy = enemies.reduce((best, e) => {
+                const d = Math.hypot(player.x - e.segments[0].x, player.y - e.segments[0].y);
+                return d < best.d ? { d, e } : best;
+            }, { d: Infinity, e: null });
+
+            if (nearestEnemy.e) {
+                const a = Math.atan2(player.y - nearestEnemy.e.segments[0].y, player.x - nearestEnemy.e.segments[0].x);
+                player.vx = Math.cos(a) * 15;
+                player.vy = Math.sin(a) * 15;
+            }
+
+            // Particles
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: player.x, y: player.y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 40,
+                    color: '#e74c3c',
+                    size: 4 + Math.random() * 4
+                });
+            }
+
+            floatingTexts.push({
+                x: player.x, y: player.y - 30,
+                text: 'OUCH!',
+                color: '#e74c3c',
+                life: 60,
+                vy: -2
+            });
+
+            if (player.lives <= 0) {
+                gameOver();
+            }
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('biblicalDetectiveHS', highScore);
+            }
+            showOverlay('GAME OVER', `Score: ${score}`, true);
+        }
+
+        function showOverlay(title, subtitle, isLose) {
+            const overlay = document.getElementById('overlay');
+            overlay.querySelector('h1').textContent = title;
+            overlay.querySelector('h1').className = isLose ? 'lose-title' : (title.includes('WIN') ? 'win-title' : '');
+            overlay.querySelector('h2').textContent = subtitle;
+            overlay.querySelector('.info').innerHTML = isLose
+                ? `The scrollworms got you!<br><br>High Score: ${highScore}`
+                : `Collect J, E, D, P sources!<br>Avoid the Scrollworms!<br><br>High Score: ${highScore}`;
+            overlay.querySelector('button').textContent = gameState === 'menu' ? 'START QUEST' : 'TRY AGAIN';
+            overlay.classList.remove('hidden');
+        }
+
+        // ============================================
+        // POWERUP SYSTEM
+        // ============================================
+        function spawnPowerup() {
+            if (powerups.length >= 2) return;
+            const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+            powerups.push({
+                x: 60 + Math.random() * (W - 120),
+                y: 60 + Math.random() * (H - 120),
+                type,
+                life: 600,
+                pulse: 0
+            });
+        }
+
+        function updatePowerups(dt) {
+            powerups = powerups.filter(p => {
+                p.life -= dt;
+                p.pulse += 0.1;
+
+                // Collect
+                if (Math.hypot(player.x - p.x, player.y - p.y) < 30) {
+                    applyPowerup(p.type);
+                    return false;
+                }
+
+                return p.life > 0;
+            });
+
+            // Spawn chance
+            if (Math.random() < 0.002 * dt) {
+                spawnPowerup();
+            }
+        }
+
+        function applyPowerup(type) {
+            score += 50;
+            let text = '';
+            let color = '#fff';
+
+            switch (type) {
+                case 'speed':
+                    player.speed = 6;
+                    setTimeout(() => player.speed = 4, 5000);
+                    text = 'SPEED UP!';
+                    color = '#3498db';
+                    break;
+                case 'shield':
+                    player.invincible = 180;
+                    text = 'SHIELD!';
+                    color = '#9b59b6';
+                    break;
+                case 'freeze':
+                    enemies.forEach(e => e.frozen = 180);
+                    text = 'FREEZE!';
+                    color = '#00ffff';
+                    break;
+                case 'life':
+                    if (player.lives < player.maxLives) {
+                        player.lives++;
+                        text = '+1 LIFE!';
+                        color = '#e74c3c';
+                    } else {
+                        score += 200;
+                        text = '+200 PTS!';
+                        color = '#feca57';
+                    }
+                    break;
+            }
+
+            floatingTexts.push({
+                x: player.x, y: player.y - 30,
+                text, color,
+                life: 60, vy: -2
+            });
+
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: player.x, y: player.y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 30,
+                    color,
+                    size: 3 + Math.random() * 3
+                });
+            }
+        }
+
+        // ============================================
+        // PLAYER UPDATE
+        // ============================================
+        function updatePlayer(dt) {
+            // Movement
+            let dx = 0, dy = 0;
+            if (keys['arrowleft'] || keys['a']) dx -= 1;
+            if (keys['arrowright'] || keys['d']) dx += 1;
+            if (keys['arrowup'] || keys['w']) dy -= 1;
+            if (keys['arrowdown'] || keys['s']) dy += 1;
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
+
+            // Dash
+            if ((keysPressed[' '] || keysPressed['shift']) && player.dashCooldown <= 0 && (dx !== 0 || dy !== 0)) {
+                player.dashTimer = 12;
+                player.dashCooldown = 45;
+                player.vx = dx * 18;
+                player.vy = dy * 18;
+
+                for (let i = 0; i < 10; i++) {
+                    particles.push({
+                        x: player.x, y: player.y,
+                        vx: -dx * 3 + (Math.random() - 0.5) * 2,
+                        vy: -dy * 3 + (Math.random() - 0.5) * 2,
+                        life: 20,
+                        color: '#feca57',
+                        size: 4
+                    });
+                }
+            }
+
+            if (player.dashTimer > 0) {
+                player.dashTimer -= dt;
+                // Add trail
+                player.trail.push({ x: player.x, y: player.y, alpha: 1 });
+            } else {
+                player.vx = player.vx * 0.8 + dx * player.speed * 0.2;
+                player.vy = player.vy * 0.8 + dy * player.speed * 0.2;
+            }
+
+            if (player.dashCooldown > 0) player.dashCooldown -= dt;
+            if (player.invincible > 0) player.invincible -= dt;
+
+            player.x += player.vx * dt;
+            player.y += player.vy * dt;
+
+            // Bounds
+            player.x = Math.max(25, Math.min(W - 25, player.x));
+            player.y = Math.max(35, Math.min(H - 25, player.y));
+
+            // Update trail
+            player.trail = player.trail.filter(t => {
+                t.alpha -= 0.08;
+                return t.alpha > 0;
+            });
+
+            // Animation
+            if (dx > 0) player.facing = 'R';
+            if (dx < 0) player.facing = 'L';
+
+            if (Math.abs(player.vx) > 0.5 || Math.abs(player.vy) > 0.5) {
+                player.animTimer += dt;
+                const walkFrame = Math.floor(player.animTimer / 6) % 2 + 1;
+                player.frame = `walk${player.facing}${walkFrame}`;
+            } else {
+                player.frame = `stand${player.facing}`;
+                player.animTimer = 0;
+            }
+
+            // Clear pressed keys
+            Object.keys(keysPressed).forEach(k => keysPressed[k] = false);
+        }
+
+        // ============================================
+        // SOURCE COLLECTION
+        // ============================================
+        function updateSources(dt) {
+            sources.forEach(source => {
+                if (source.collected) return;
+
+                source.pulse += 0.05 * dt;
+
+                // Sparkles
+                if (Math.random() < 0.05 * dt) {
+                    source.sparkles.push({
+                        x: source.x + (Math.random() - 0.5) * 40,
+                        y: source.y + (Math.random() - 0.5) * 30,
+                        life: 30,
+                        vy: -1 - Math.random()
+                    });
+                }
+                source.sparkles = source.sparkles.filter(s => {
+                    s.y += s.vy;
+                    s.life--;
+                    return s.life > 0;
+                });
+
+                // Collection
+                if (Math.hypot(player.x - source.x, player.y - source.y) < 35) {
+                    collectSource(source);
+                }
+            });
+        }
+
+        function collectSource(source) {
+            source.collected = true;
+            score += 500;
+            screenShake = 8;
+
+            // Big effect
+            collectEffects.push({
+                x: source.x, y: source.y,
+                radius: 0,
+                maxRadius: 100,
+                color: source.color,
+                life: 30
+            });
+
+            // Particles
+            for (let i = 0; i < 30; i++) {
+                const angle = (i / 30) * Math.PI * 2;
+                particles.push({
+                    x: source.x, y: source.y,
+                    vx: Math.cos(angle) * (3 + Math.random() * 3),
+                    vy: Math.sin(angle) * (3 + Math.random() * 3),
+                    life: 50,
+                    color: source.color,
+                    size: 4 + Math.random() * 4
+                });
+            }
+
+            floatingTexts.push({
+                x: source.x, y: source.y - 20,
+                text: source.id.toUpperCase() + ' SOURCE!',
+                color: source.color,
+                life: 80,
+                vy: -1.5
+            });
+
+            floatingTexts.push({
+                x: source.x, y: source.y + 10,
+                text: '+500',
+                color: '#fff',
+                life: 60,
+                vy: -2
+            });
+
+            // Check win
+            if (sources.every(s => s.collected)) {
+                setTimeout(() => {
+                    gameState = 'win';
+                    score += 1000 + player.lives * 200;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('biblicalDetectiveHS', highScore);
+                    }
+                    showOverlay('TORAH RESTORED!', `Final Score: ${score}`, false);
+                }, 500);
+            }
+        }
+
+        // ============================================
+        // PARTICLES & EFFECTS
+        // ============================================
+        function updateParticles(dt) {
+            particles = particles.filter(p => {
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vx *= 0.96;
+                p.vy *= 0.96;
+                p.life -= dt;
+                return p.life > 0;
+            });
+
+            floatingTexts = floatingTexts.filter(t => {
+                t.y += t.vy * dt;
+                t.life -= dt;
+                return t.life > 0;
+            });
+
+            collectEffects = collectEffects.filter(e => {
+                e.radius += (e.maxRadius - e.radius) * 0.2;
+                e.life -= dt;
+                return e.life > 0;
+            });
+
+            if (screenShake > 0) screenShake -= dt;
+            if (slowMo > 0) slowMo -= dt;
+        }
+
+        // ============================================
+        // DRAWING
+        // ============================================
+        function draw() {
+            // Screen shake
+            ctx.save();
+            if (screenShake > 0) {
+                ctx.translate(
+                    (Math.random() - 0.5) * screenShake,
+                    (Math.random() - 0.5) * screenShake
+                );
+            }
+
+            // Background
+            ctx.fillStyle = '#0a0a18';
+            ctx.fillRect(0, 0, W, H);
+
+            // Grid
+            ctx.strokeStyle = '#151528';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, H);
+                ctx.stroke();
+            }
+            for (let y = 0; y < H; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+
+            // Collect effects
+            collectEffects.forEach(e => {
+                ctx.strokeStyle = e.color;
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = e.life / 30;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            });
+
+            // Powerups
+            powerups.forEach(p => {
+                const bob = Math.sin(p.pulse) * 3;
+                const alpha = p.life < 120 ? (Math.sin(p.life * 0.2) * 0.5 + 0.5) : 1;
+
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = p.type === 'speed' ? '#3498db' :
+                               p.type === 'shield' ? '#9b59b6' :
+                               p.type === 'freeze' ? '#00ffff' : '#e74c3c';
+
+                // Outer glow
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 15;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y + bob, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Icon
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const icon = p.type === 'speed' ? '»' :
+                            p.type === 'shield' ? '○' :
+                            p.type === 'freeze' ? '❄' : '♥';
+                ctx.fillText(icon, p.x, p.y + bob);
+
+                ctx.globalAlpha = 1;
+            });
+
+            // Sources
+            sources.forEach(source => {
+                if (source.collected) return;
+
+                const bob = Math.sin(source.pulse) * 4;
+                const glow = Math.sin(source.pulse * 2) * 0.3 + 0.7;
+
+                // Sparkles
+                source.sparkles.forEach(s => {
+                    ctx.globalAlpha = s.life / 30;
+                    ctx.fillStyle = source.color;
+                    ctx.fillRect(s.x - 2, s.y - 2, 4, 4);
+                });
+                ctx.globalAlpha = 1;
+
+                // Glow
+                ctx.shadowColor = source.color;
+                ctx.shadowBlur = 25 * glow;
+
+                // Scroll body
+                const x = source.x, y = source.y + bob;
+                ctx.fillStyle = '#f5e6c8';
+                ctx.beginPath();
+                ctx.roundRect(x - 22, y - 14, 44, 28, 4);
+                ctx.fill();
+
+                // Scroll caps
+                ctx.fillStyle = source.color;
+                ctx.beginPath();
+                ctx.arc(x - 20, y, 10, 0, Math.PI * 2);
+                ctx.arc(x + 20, y, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Letter
+                ctx.fillStyle = source.dark;
+                ctx.font = 'bold 18px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(source.id.toUpperCase(), x, y + 2);
+            });
+
+            // Enemies
+            enemies.forEach(enemy => {
+                const frozen = enemy.frozen > 0;
+
+                for (let i = enemy.segments.length - 1; i >= 0; i--) {
+                    const seg = enemy.segments[i];
+                    const size = i === 0 ? 16 : 12 - i * 0.5;
+
+                    // Body
+                    ctx.fillStyle = frozen ? '#4a8080' : (i === 0 ? '#8b2020' : '#5c1515');
+                    if (enemy.type === 'fast') {
+                        ctx.fillStyle = frozen ? '#4a6080' : (i === 0 ? '#8b4020' : '#5c2a15');
+                    }
+                    ctx.beginPath();
+                    ctx.arc(seg.x, seg.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Highlight
+                    ctx.fillStyle = frozen ? '#6ab0b0' : '#a03030';
+                    ctx.beginPath();
+                    ctx.arc(seg.x - size * 0.2, seg.y - size * 0.2, size * 0.35, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Eyes on head
+                    if (i === 0) {
+                        const ea = enemy.angle;
+                        ctx.fillStyle = frozen ? '#aadddd' : '#ffff00';
+                        ctx.beginPath();
+                        ctx.arc(seg.x + Math.cos(ea - 0.4) * 8, seg.y + Math.sin(ea - 0.4) * 8, 4, 0, Math.PI * 2);
+                        ctx.arc(seg.x + Math.cos(ea + 0.4) * 8, seg.y + Math.sin(ea + 0.4) * 8, 4, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(seg.x + Math.cos(ea - 0.4) * 9, seg.y + Math.sin(ea - 0.4) * 9, 2, 0, Math.PI * 2);
+                        ctx.arc(seg.x + Math.cos(ea + 0.4) * 9, seg.y + Math.sin(ea + 0.4) * 9, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            });
+
+            // Player trail
+            player.trail.forEach(t => {
+                ctx.globalAlpha = t.alpha * 0.5;
+                ctx.drawImage(sprites[player.frame], t.x - 24, t.y - 27);
+            });
+            ctx.globalAlpha = 1;
+
+            // Player
+            const flash = player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0;
+            if (!flash) {
+                if (player.invincible > 0) {
+                    ctx.shadowColor = '#9b59b6';
+                    ctx.shadowBlur = 15;
+                }
+                ctx.drawImage(sprites[player.frame], player.x - 24, player.y - 27);
+                ctx.shadowBlur = 0;
+            }
+
+            // Particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life / 50;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+            });
+            ctx.globalAlpha = 1;
+
+            // Floating texts
+            floatingTexts.forEach(t => {
+                ctx.globalAlpha = Math.min(1, t.life / 20);
+                ctx.fillStyle = t.color;
+                ctx.font = '12px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.text, t.x, t.y);
+            });
+            ctx.globalAlpha = 1;
+
+            // HUD
+            drawHUD();
+
+            ctx.restore();
+        }
+
+        function drawHUD() {
+            // Lives
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = '16px "Press Start 2P"';
+            ctx.textAlign = 'left';
+            let heartsStr = '';
+            for (let i = 0; i < player.maxLives; i++) {
+                heartsStr += i < player.lives ? '♥' : '♡';
+            }
+            ctx.fillText(heartsStr, 15, 30);
+
+            // Score
+            ctx.fillStyle = '#feca57';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${score}`, W - 15, 30);
+
+            // Sources collected
+            ctx.textAlign = 'center';
+            const collected = sources.filter(s => s.collected).length;
+            ctx.fillStyle = '#888';
+            ctx.font = '10px "Press Start 2P"';
+            ctx.fillText(`SOURCES: ${collected}/4`, W / 2, 25);
+
+            // Source indicators
+            sources.forEach((s, i) => {
+                const ix = W / 2 - 60 + i * 40;
+                ctx.fillStyle = s.collected ? s.color : '#333';
+                ctx.globalAlpha = s.collected ? 1 : 0.4;
+                ctx.font = '14px "Press Start 2P"';
+                ctx.fillText(s.id.toUpperCase(), ix, 45);
+            });
+            ctx.globalAlpha = 1;
+
+            // Dash cooldown
+            if (player.dashCooldown > 0) {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(15, H - 25, 60, 10);
+                ctx.fillStyle = '#feca57';
+                ctx.fillRect(15, H - 25, 60 * (1 - player.dashCooldown / 45), 10);
+            } else {
+                ctx.fillStyle = '#feca57';
+                ctx.font = '8px "Press Start 2P"';
+                ctx.textAlign = 'left';
+                ctx.fillText('DASH READY', 15, H - 18);
+            }
+        }
+
+        // ============================================
+        // MAIN LOOP
+        // ============================================
+        function gameLoop() {
+            const dt = slowMo > 0 ? 0.3 : 1;
+
+            if (gameState === 'playing') {
+                updatePlayer(dt);
+                updateEnemies(dt);
+                updateSources(dt);
+                updatePowerups(dt);
+                updateParticles(dt);
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
         document.addEventListener('keydown', e => {
-            keys[e.key.toLowerCase()] = true;
-            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+            const key = e.key.toLowerCase();
+            if (!keys[key]) keysPressed[key] = true;
+            keys[key] = true;
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'w', 'a', 's', 'd'].includes(key)) {
                 e.preventDefault();
             }
         });
@@ -484,293 +1176,10 @@
             keys[e.key.toLowerCase()] = false;
         });
 
-        document.getElementById('startBtn').addEventListener('click', init);
+        document.getElementById('startBtn').addEventListener('click', initGame);
 
-        // Update
-        function update() {
-            if (gameState !== 'playing') return;
-
-            // Player movement
-            let dx = 0, dy = 0;
-            if (keys['arrowleft'] || keys['a']) dx -= 1;
-            if (keys['arrowright'] || keys['d']) dx += 1;
-            if (keys['arrowup'] || keys['w']) dy -= 1;
-            if (keys['arrowdown'] || keys['s']) dy += 1;
-
-            // Normalize diagonal
-            if (dx !== 0 && dy !== 0) {
-                dx *= 0.707;
-                dy *= 0.707;
-            }
-
-            player.vx = dx * player.speed;
-            player.vy = dy * player.speed;
-            player.x += player.vx;
-            player.y += player.vy;
-
-            // Bounds
-            player.x = Math.max(20, Math.min(W - 20, player.x));
-            player.y = Math.max(30, Math.min(H - 20, player.y));
-
-            // Animation
-            if (dx !== 0 || dy !== 0) {
-                player.animTimer++;
-                if (dx > 0) player.facing = 'right';
-                if (dx < 0) player.facing = 'left';
-
-                const walkFrame = Math.floor(player.animTimer / 8) % 2 + 1;
-                player.frame = player.facing === 'right' ? `walkR${walkFrame}` : `walkL${walkFrame}`;
-            } else {
-                player.frame = 'idle';
-                player.animTimer = 0;
-            }
-
-            // Invincibility
-            if (invincible > 0) invincible--;
-
-            // Update enemies
-            enemies.forEach(enemy => {
-                enemy.turnTimer++;
-                if (enemy.turnTimer > 60 + Math.random() * 60) {
-                    enemy.turnTimer = 0;
-                    enemy.turnDir = Math.random() < 0.5 ? 1 : -1;
-                }
-
-                // Slightly home towards player
-                const toPlayer = Math.atan2(player.y - enemy.segments[0].y, player.x - enemy.segments[0].x);
-                let angleDiff = toPlayer - enemy.angle;
-                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-                enemy.angle += Math.sign(angleDiff) * 0.02;
-                enemy.angle += enemy.turnDir * 0.01;
-
-                // Move head
-                enemy.segments[0].x += Math.cos(enemy.angle) * enemy.speed;
-                enemy.segments[0].y += Math.sin(enemy.angle) * enemy.speed;
-
-                // Wrap around
-                if (enemy.segments[0].x < -50) enemy.segments[0].x = W + 50;
-                if (enemy.segments[0].x > W + 50) enemy.segments[0].x = -50;
-                if (enemy.segments[0].y < -50) enemy.segments[0].y = H + 50;
-                if (enemy.segments[0].y > H + 50) enemy.segments[0].y = -50;
-
-                // Follow segments
-                for (let i = 1; i < enemy.segments.length; i++) {
-                    const prev = enemy.segments[i - 1];
-                    const curr = enemy.segments[i];
-                    const dist = Math.hypot(prev.x - curr.x, prev.y - curr.y);
-                    if (dist > 12) {
-                        const ang = Math.atan2(prev.y - curr.y, prev.x - curr.x);
-                        curr.x += Math.cos(ang) * (dist - 12);
-                        curr.y += Math.sin(ang) * (dist - 12);
-                    }
-                }
-
-                // Collision with player
-                if (invincible === 0) {
-                    for (const seg of enemy.segments) {
-                        const dist = Math.hypot(player.x - seg.x, player.y - seg.y);
-                        if (dist < 20) {
-                            lives--;
-                            updateLivesDisplay();
-                            invincible = 90;
-
-                            // Knockback
-                            const ang = Math.atan2(player.y - seg.y, player.x - seg.x);
-                            player.x += Math.cos(ang) * 40;
-                            player.y += Math.sin(ang) * 40;
-
-                            // Particles
-                            for (let i = 0; i < 10; i++) {
-                                particles.push({
-                                    x: player.x,
-                                    y: player.y,
-                                    vx: (Math.random() - 0.5) * 5,
-                                    vy: (Math.random() - 0.5) * 5,
-                                    life: 30,
-                                    color: '#e74c3c'
-                                });
-                            }
-
-                            if (lives <= 0) {
-                                gameState = 'lose';
-                                showOverlay('GAME OVER', 'The scrollworms got you!<br>You failed to reconstruct<br>the Torah...', 'lose');
-                            }
-                            break;
-                        }
-                    }
-                }
-            });
-
-            // Source collection
-            sources.forEach(source => {
-                if (!source.collected) {
-                    const dist = Math.hypot(player.x - source.x, player.y - source.y);
-                    if (dist < 30) {
-                        source.collected = true;
-                        document.getElementById(`box-${source.id}`).classList.add('collected');
-
-                        // Particles
-                        for (let i = 0; i < 15; i++) {
-                            particles.push({
-                                x: source.x,
-                                y: source.y,
-                                vx: (Math.random() - 0.5) * 6,
-                                vy: (Math.random() - 0.5) * 6,
-                                life: 40,
-                                color: source.color
-                            });
-                        }
-
-                        // Check win
-                        if (sources.every(s => s.collected)) {
-                            gameState = 'win';
-                            showOverlay('TORAH RESTORED!', 'You collected all four<br>Documentary Hypothesis sources!<br><br>J + E + D + P = Torah', 'win');
-                        }
-                    }
-                }
-            });
-
-            // Update particles
-            particles = particles.filter(p => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vx *= 0.95;
-                p.vy *= 0.95;
-                p.life--;
-                return p.life > 0;
-            });
-        }
-
-        function showOverlay(title, text, className) {
-            const overlay = document.getElementById('overlay');
-            const titleEl = document.getElementById('overlayTitle');
-            const textEl = document.getElementById('overlayText');
-
-            titleEl.textContent = title;
-            titleEl.className = className || '';
-            textEl.innerHTML = text;
-            document.getElementById('startBtn').textContent = 'PLAY AGAIN';
-            overlay.classList.remove('hidden');
-        }
-
-        // Draw
-        function draw() {
-            // Clear with dark background
-            ctx.fillStyle = '#0f0f23';
-            ctx.fillRect(0, 0, W, H);
-
-            // Draw subtle grid pattern (ancient stone floor)
-            ctx.strokeStyle = '#1a1a3a';
-            ctx.lineWidth = 1;
-            for (let x = 0; x < W; x += TILE) {
-                for (let y = 0; y < H; y += TILE) {
-                    ctx.strokeRect(x, y, TILE, TILE);
-                }
-            }
-
-            // Draw sources
-            const time = Date.now() / 1000;
-            sources.forEach(source => {
-                if (!source.collected) {
-                    const bob = Math.sin(time * 3 + source.bobOffset) * 4;
-                    const x = source.x;
-                    const y = source.y + bob;
-
-                    // Glow
-                    ctx.shadowColor = source.color;
-                    ctx.shadowBlur = 20;
-
-                    // Scroll shape
-                    ctx.fillStyle = '#f5e6d3';
-                    ctx.beginPath();
-                    ctx.roundRect(x - 18, y - 12, 36, 24, 4);
-                    ctx.fill();
-
-                    // Scroll ends
-                    ctx.fillStyle = source.color;
-                    ctx.beginPath();
-                    ctx.arc(x - 16, y, 8, 0, Math.PI * 2);
-                    ctx.arc(x + 16, y, 8, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.shadowBlur = 0;
-
-                    // Letter
-                    ctx.fillStyle = '#1a1a2e';
-                    ctx.font = 'bold 16px "Press Start 2P", monospace';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(source.id.toUpperCase(), x, y + 2);
-                }
-            });
-
-            // Draw enemies (scrollworms)
-            enemies.forEach(enemy => {
-                // Draw segments back to front
-                for (let i = enemy.segments.length - 1; i >= 0; i--) {
-                    const seg = enemy.segments[i];
-                    const size = i === 0 ? 14 : 10 - i * 0.5;
-
-                    // Body
-                    ctx.fillStyle = i === 0 ? '#8b0000' : '#5c1010';
-                    ctx.beginPath();
-                    ctx.arc(seg.x, seg.y, size, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Highlight
-                    ctx.fillStyle = '#a02020';
-                    ctx.beginPath();
-                    ctx.arc(seg.x - 2, seg.y - 2, size * 0.4, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Eyes on head
-                    if (i === 0) {
-                        const eyeAng = enemy.angle;
-                        ctx.fillStyle = '#ffff00';
-                        ctx.beginPath();
-                        ctx.arc(seg.x + Math.cos(eyeAng - 0.4) * 6, seg.y + Math.sin(eyeAng - 0.4) * 6, 3, 0, Math.PI * 2);
-                        ctx.arc(seg.x + Math.cos(eyeAng + 0.4) * 6, seg.y + Math.sin(eyeAng + 0.4) * 6, 3, 0, Math.PI * 2);
-                        ctx.fill();
-
-                        ctx.fillStyle = '#000';
-                        ctx.beginPath();
-                        ctx.arc(seg.x + Math.cos(eyeAng - 0.4) * 7, seg.y + Math.sin(eyeAng - 0.4) * 7, 1.5, 0, Math.PI * 2);
-                        ctx.arc(seg.x + Math.cos(eyeAng + 0.4) * 7, seg.y + Math.sin(eyeAng + 0.4) * 7, 1.5, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-            });
-
-            // Draw player
-            const sprite = spriteCanvases[player.frame] || spriteCanvases['idle'];
-            const flashOn = invincible > 0 && Math.floor(invincible / 4) % 2 === 0;
-
-            if (!flashOn) {
-                ctx.drawImage(
-                    sprite,
-                    player.x - sprite.width / 2,
-                    player.y - sprite.height / 2 - 5
-                );
-            }
-
-            // Draw particles
-            particles.forEach(p => {
-                ctx.globalAlpha = p.life / 40;
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
-            });
-            ctx.globalAlpha = 1;
-        }
-
-        // Game loop
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
+        // Start
+        showOverlay('BIBLICAL DETECTIVE', 'Documentary Hypothesis Quest', false);
         gameLoop();
     </script>
 </body>
