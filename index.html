@@ -101,9 +101,9 @@ window.addEventListener('keydown', e => { keys[e.code] = true; if(['ArrowUp','Ar
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 // --- GAME CONSTANTS ---
-const GRAVITY = 0.4;
-const JUMP_FORCE = -12.5;
-const MOVE_SPEED = 4.2;
+const GRAVITY = 0.65;
+const JUMP_FORCE = -11;
+const MOVE_SPEED = 4.0;
 const CLIMB_SPEED = 2.5;
 const PLAYER_W = 36;
 const PLAYER_H = 42;
@@ -474,14 +474,34 @@ function update() {
     for (const e of levelEnemies) {
         e.x += e.speed;
         if (e.x <= e.minX || e.x + e.w >= e.maxX) e.speed *= -1;
+        // Shrink collision box (visual is larger than hitbox)
+        e.hitX = e.x + 5;
+        e.hitY = e.y + 4;
+        e.hitW = e.w - 10;
+        e.hitH = e.h - 4;
     }
 
     if (invincibleTimer > 0) {
         invincibleTimer--;
     } else {
         for (const e of levelEnemies) {
-            if (rectOverlap({x: P.x+8, y: P.y+8, w: P.w-16, h: P.h-16}, e)) {
-                loseLife(); return;
+            const playerBox = {x: P.x+6, y: P.y+6, w: P.w-12, h: P.h-12};
+            const enemyBox = {x: e.hitX || e.x+5, y: e.hitY || e.y+4, w: e.hitW || e.w-10, h: e.hitH || e.h-4};
+            if (rectOverlap(playerBox, enemyBox)) {
+                // DK-style: if player's feet are above enemy top, it's a jump-over
+                if (P.y + P.h - 10 < e.y) {
+                    // Successful jump over! Award points and mark enemy as jumped
+                    if (!e.jumped) {
+                        e.jumped = true;
+                        score += 100;
+                        spawnParticles(P.x + P.w/2, P.y + P.h, '#FFD700', 5);
+                    }
+                } else {
+                    loseLife(); return;
+                }
+            } else {
+                // Reset jumped flag when player moves away
+                if (e.jumped) e.jumped = false;
             }
         }
     }
