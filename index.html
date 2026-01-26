@@ -3,2309 +3,851 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biblical Detective: The Documentary Hypothesis</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Biblical Detective - Documentary Hypothesis</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body {
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Press Start 2P', monospace;
-            overflow: hidden;
-        }
-        #gameContainer {
-            position: relative;
-            width: 800px;
-            height: 600px;
-            background: #000;
-            box-shadow: 0 0 50px rgba(254, 202, 87, 0.3);
-        }
-        #gameCanvas {
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-        }
-        #loadingScreen {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #0a0a1a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #feca57;
-            z-index: 100;
-        }
-        #loadingScreen.hidden { display: none; }
-        .loading-text { font-size: 12px; margin-top: 20px; }
-        .loading-bar {
-            width: 200px; height: 20px;
-            border: 2px solid #feca57;
-            margin-top: 10px;
-        }
-        .loading-fill {
-            height: 100%;
-            background: #feca57;
-            width: 0%;
-            transition: width 0.3s;
-        }
+        body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 2px solid #444; image-rendering: pixelated; }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="loadingScreen">
-            <div style="font-size: 20px;">BIBLICAL DETECTIVE</div>
-            <div class="loading-text">Loading...</div>
-            <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
-        </div>
-    </div>
-
+<canvas id="game"></canvas>
 <script>
-// ================================================================================
-// BIBLICAL DETECTIVE: THE DOCUMENTARY HYPOTHESIS
-// A Complete Video Game
-// ================================================================================
+// ============================================================
+// BIBLICAL DETECTIVE - A Donkey Kong-Style Platformer
+// Collect J, E, D, P Sources to reconstruct the Torah!
+// ============================================================
 
-const canvas = document.getElementById('gameCanvas');
+const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+canvas.width = 800;
+canvas.height = 600;
 
-const W = 800, H = 600;
-
-// ================================================================================
-// AUDIO SYSTEM - Synthesized sound effects
-// ================================================================================
-class AudioSystem {
-    constructor() {
-        this.ctx = null;
-        this.enabled = true;
-        this.musicGain = null;
-        this.sfxGain = null;
-        this.currentMusic = null;
-    }
-
-    init() {
-        try {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            this.musicGain = this.ctx.createGain();
-            this.musicGain.gain.value = 0.3;
-            this.musicGain.connect(this.ctx.destination);
-            this.sfxGain = this.ctx.createGain();
-            this.sfxGain.gain.value = 0.5;
-            this.sfxGain.connect(this.ctx.destination);
-        } catch (e) {
-            this.enabled = false;
-        }
-    }
-
-    playTone(freq, duration, type = 'square', volume = 0.3) {
-        if (!this.enabled || !this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.value = freq;
-        gain.gain.value = volume;
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(this.sfxGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
-    }
-
-    playJump() { this.playTone(400, 0.1); this.playTone(600, 0.1); }
-    playCollect() {
-        this.playTone(523, 0.1);
-        setTimeout(() => this.playTone(659, 0.1), 50);
-        setTimeout(() => this.playTone(784, 0.15), 100);
-    }
-    playHit() { this.playTone(100, 0.3, 'sawtooth', 0.4); }
-    playDash() { this.playTone(200, 0.05); this.playTone(400, 0.1); }
-    playPowerup() {
-        [261, 329, 392, 523].forEach((f, i) => setTimeout(() => this.playTone(f, 0.15), i * 80));
-    }
-    playBossHit() { this.playTone(80, 0.2, 'sawtooth'); this.playTone(60, 0.3, 'sawtooth'); }
-    playBossDeath() {
-        for (let i = 0; i < 10; i++) {
-            setTimeout(() => this.playTone(100 + Math.random() * 200, 0.2, 'sawtooth', 0.3), i * 100);
-        }
-    }
-    playVictory() {
-        const melody = [523, 523, 523, 659, 784, 659, 523, 784, 1047];
-        melody.forEach((f, i) => setTimeout(() => this.playTone(f, 0.2, 'square', 0.2), i * 150));
-    }
-    playGameOver() {
-        [392, 349, 330, 262].forEach((f, i) => setTimeout(() => this.playTone(f, 0.4, 'triangle', 0.3), i * 300));
-    }
-    playSelect() { this.playTone(440, 0.05); }
-    playConfirm() { this.playTone(523, 0.1); this.playTone(659, 0.1); }
-    playWave() { this.playTone(330, 0.1); this.playTone(440, 0.15); }
-    playText() { this.playTone(800, 0.02, 'square', 0.1); }
-
-    startMusic(type) {
-        if (!this.enabled || !this.ctx) return;
-        this.stopMusic();
-        // Simple procedural music
-    }
-
-    stopMusic() {
-        if (this.currentMusic) {
-            this.currentMusic = null;
-        }
-    }
-}
-
-const audio = new AudioSystem();
-
-// ================================================================================
-// SPRITE SYSTEM
-// ================================================================================
+// --- SPRITES (actual user-provided orange cat detective) ---
 const SPRITES = {
-    detective: {
-        standR: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FBBF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCYCCC.....",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            "......C..C......",
-            "......C..C......",
-            "......S..S......",
-            "................"
-        ],
-        walkR1: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FBFF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCYCCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            "......CCCC......",
-            ".....C....C.....",
-            ".....C....C.....",
-            ".....S....S.....",
-            "................"
-        ],
-        walkR2: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FBFF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCYCCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            ".......CC.......",
-            "......C..C......",
-            "......C..C......",
-            "......S..S......",
-            "................"
-        ],
-        walkL1: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FFBF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCCYCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            "......CCCC......",
-            ".....C....C.....",
-            ".....C....C.....",
-            ".....S....S.....",
-            "................"
-        ],
-        walkL2: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FFBF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCCYCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            ".......CC.......",
-            "......C..C......",
-            "......C..C......",
-            "......S..S......",
-            "................"
-        ],
-        standL: [
-            "......####......",
-            ".....######.....",
-            ".....######.....",
-            "......####......",
-            "......FFFF......",
-            "......FBBF......",
-            "......FFFF......",
-            ".......FF.......",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            ".....CCCYCC.....",
-            ".....CCCCCC.....",
-            ".....CCCCCC.....",
-            "......CCCC......",
-            "......C..C......",
-            "......C..C......",
-            "......S..S......",
-            "................"
-        ]
-    },
-    colors: {
-        '.': null,
-        '#': '#4a3728',
-        'F': '#e8c4a0',
-        'B': '#222',
-        'C': '#2c2c6c',
-        'Y': '#feca57',
-        'S': '#1a1a3e'
-    }
+    east: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAC/UlEQVR4nO2ZX0hTURzHvzeysSF4b4LsH/NBk2RELMcMHxTpISgE66EIokdBCXwQIoPIYNhTPdRbj1EkGrUXfdCHIMpwbUHCEMIJSpt3A3c3iK214PZg53Y3SUh/v4vCPk9n515+5/e95/c753fOgDp16hxqJE7jXcFBXbTjsQjLWORG29tChtNNirvqGYeII5TG2ttCeqmooVTUEJ3ogKshX/XcPCNUkAoQvBo/D9hkPBvxcpiv4iiHUbmyBpSPAzYZamrJ6Lc7FPK8IIvJruCgrqYSALYdFdTmgZkDI6A2tgtaGtGJDgBAaOIrSkXNeGZ3KFhNRsk+HHkIFbQ0og9CQDkPAIYQm6sV5c11ZLI5dI7RjUeSxAUtDQB4fu3ntsN/nDfTezsBm6uVYrgqSASsJqNSPBaR1K38P99ZGG1EeXMdL3IBeFwnyJZTllXIzPe+R1W/h/qAqakFMvuk+0D/5KL0ZWVt13emI7OkSUy+tX98fFP/trIMADjX40Mmm4PWHcZycg0ueyMCZ8/A52s5uALM8X0jJBv9w09mSR0XsOWA3aFgPuVGPBaRFt9/1qcjsyzjkBdzot2kuKGmEugKDupenxcXKzPY2Mge/GLO7lDg9PgBAE6PH2oqgbv37kPrDiM+MEA9HE81asbp8ePDu0/w+ngqU3YBgpGrV1jssgsoaOldK9L9wr4TCzYrMsINMbldy0II+Fv0UcIiQBxsgO3lVDjOEUqWzgAHlgl48/opi11LBDQpbly6PMSSA2yr0MJoo9HOZHO4/vLY4cwBm6sVvtMBNvukAlaTUelkiwN2h4JTt5aQyeYAAOVcAQUtzXK1SG5wZrhXH5//AQDGdYoo7jgE7CkH3t7p0Z3NMjrH5qTafuAXSkUNTo+ftYQQ7CmEnM0yAOEwdrStZM9TuvLwguGw+Tqlf3JRam8L6VZcrQP7SOLOsTlJ3crvcJ7Cqf+B5Q8Oq74+YNF5gBO2nVhNJYxrdnHYp7zQErDNQO0yasWSWqdOnUPIb7U0AItwHVPnAAAAAElFTkSuQmCC',
+    west: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAC6UlEQVR4nO2Z30tTcRTAP+sH4VjNK+aPrTdNAwljk2uIBEIY9CSU9RL1HsiiNyNk+KARFUX+Bz7VS770UD5EEVJDAysRnRmIm0tod4s1k6Lbg9zr5jYpPd9htc/TtnM5Pzjfc77n3EGJEv83DlWK6+t0E2AlbRBZCiuzo0Sxv6XLzPyeNKLMfQgpsbVLWuFG5wGGAzr+li7Tyook4gFsZDTgolFLMHTxELB+tKTYI6XIcixpRFlJGxmSVgAatYSUqSxEzmW+Y5OPWGSKMqcmWg9iivwtXWYsMgVAmVMDIDSoo/eGcGuerGcli1q0M0zfPm0CVFdV5Mj04KwdSNKI4tY8TIyPbNu+aBFXV1Vw8lY4rywUbGA04KJ2byInI9tBLAPe2sPmu3unmIltXrCT0/N0DIyJ2RXrQgCp4314gVTGb67nVyVN5CB2hCJLYcfDkcebPjM5PS9lzkY0A22+5qzvrlf9AHxajhP7nAAQPT4gHUC7zzH28o155OMdZoxyAMq/x3k/l6JSk7S0jpIBa2Fh2QRYXFiku/t8lkx6MlUyC70ePIvbfYCeK/2UOTVqvE22bMfOQpl43u7G7zsBYPd863aWRkkGllNpgKwLy/qcPehtH/EAHjW3mg9+fsGteUgaUWn1OYgHUOVyMp7eL622IOIBXIp9tY+L5MxTCPEAMp22xmuVKF8pVaM0gMzWqaqglQRw/26fvbRYSLdPC/FRotB+bO3DgOhOXPQa2PEXmcVowMWLG010eiNKLzQlAVgOr8aTXO/pJBRsANZarPRMpGSctibO0KAOqwku35zgTPtBKrUf4guNkgxY3edo4Al6cJbwvkZb9uxaW94ijw9f2NKYrawG3JqHGm+THUzv02+2bGMQhYL6HZS9ty/0ir2Qs83HfFScG/pjf4reRvPVQMfAmGMrzoPCDMDayy5rnbQ6k/QfHUXLgKrRumjDnCqUBWAVcdKI/n03cX2dbhZjHy5RosQ/wC9c9veQ5EhqwgAAAABJRU5ErkJggg==',
+    south: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAADg0lEQVR4nO2YX0iUWRTAfxMulQzoTGXjTAalRjGYpDJSQaG7FCwb1ELSg8YW1FNiVPTQQ4kPClGxy0bty9JDPuzOiwkVLW1KQbIM/UFMWlaFRdB0ivnmI5lpKLg92B3mj07pdz4qmB8MfN+997vnnHvOvfecgTx58nzVOOyauLZurwIwjUmKXF4eP7phi6wlUhNFrjcr/ayVByhyedPazMFe9fzi9yprgkUiZsB0OEIkeExVlAfmVe5A1SZV8DIkJRIQNACARJRQ+4Z5u8/9tI5ExBQVWSA10bPRGVaXraeq7S+WF7rmHLPnCoS61kuJBIQ2cUV5QOlYXwgSG9vyBFp505gEIB4zAOb1QiajYyFLOoh5IB4zGDpfD0Cg/T/6+m/ivH8CgJmdl9j341HutjmZDkf47sIIywtdlpUHoU08OhZy/H2qcvZlaXHOsatL3AydrxdRHgQvssj1ZsXSYv71HmbN2jUANDb8AEBf/83kOOc/HZCI4m7pFpEtdgpptPIAF7s6WOUtyRozHY6IyRMzwN3S7dC3cfDGrbS+gSeDAGyrqWZjIsqmk7dtS2Es0xu8o8bHw8o032T9eoN3xFIIjfhK+Eorlcfn50hrMwAz5msAfvvlKmD92LSVivKA8pVWql27m5RpvlE91fXq4fYGNT4eVrt2NylfaWXOXGkxiK1Gbd1eNTUxjMfnB2Bf9Ur8j4YocRbSv7GcnsFXgHx6LZrMeXx+piaGAWi9dDnZfvBcJ0CyTxLxY9Tj8yfTCoDwTIwyZldee0cSEQ/oYiV1hWtrdiSft9ZvTz7rMalFjxVk64EPzJWZLiZb/RTEQ0hT5PLy+zdRXrwtxuMrtUuMdQ/kOhaf/j+R81uJMLIlhDSfWhNYwVYDAH79+ayt89tuQOvxjrR3aa9Y3sShrgAkogBUnc7u77v3B43fHkhru9vmTD67W6zJF/1fKPOiiseMLOWlsWyAu+myA2ZLxblShdRbGWaN0gWNRFW26AkiwWNKh45WJPVIjccMug+tAuDIn+/SvpVMqUUvsnjMyAojz4pi4rGRZHumR6xiaSX6z2xLu4iar71MU1SvtC5yMtslsLQHGjoHPnt1ZXkTN3QOOF4ZBSzz1ODfvOWj46WTOpE9sP/qAwc8EEuRF4LtNzHYmxOJGmAakznLxqmJ4S/rFEolM3wyi/aP9efJkyfP18l7KJ5QdoGbW9IAAAAASUVORK5CYII='
 };
 
-function renderSprite(data, colors, scale) {
-    const h = data.length, w = data[0].length;
-    const c = document.createElement('canvas');
-    c.width = w * scale; c.height = h * scale;
-    const cx = c.getContext('2d');
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const col = colors[data[y][x]];
-            if (col) { cx.fillStyle = col; cx.fillRect(x*scale, y*scale, scale, scale); }
-        }
+// --- AUDIO ENGINE ---
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playSound(type) {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    const t = audioCtx.currentTime;
+    switch(type) {
+        case 'jump':
+            o.type = 'square'; o.frequency.setValueAtTime(200, t);
+            o.frequency.linearRampToValueAtTime(600, t+0.15);
+            g.gain.setValueAtTime(0.15, t); g.gain.linearRampToValueAtTime(0, t+0.2);
+            o.start(t); o.stop(t+0.2); break;
+        case 'land':
+            o.type = 'triangle'; o.frequency.setValueAtTime(120, t);
+            g.gain.setValueAtTime(0.1, t); g.gain.linearRampToValueAtTime(0, t+0.1);
+            o.start(t); o.stop(t+0.1); break;
+        case 'collect':
+            o.type = 'sine'; o.frequency.setValueAtTime(523, t);
+            o.frequency.setValueAtTime(659, t+0.1); o.frequency.setValueAtTime(784, t+0.2);
+            g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t+0.35);
+            o.start(t); o.stop(t+0.35); break;
+        case 'hurt':
+            o.type = 'sawtooth'; o.frequency.setValueAtTime(300, t);
+            o.frequency.linearRampToValueAtTime(100, t+0.3);
+            g.gain.setValueAtTime(0.15, t); g.gain.linearRampToValueAtTime(0, t+0.4);
+            o.start(t); o.stop(t+0.4); break;
+        case 'win':
+            o.type = 'sine';
+            [523,587,659,784,1047].forEach((f,i) => {
+                o.frequency.setValueAtTime(f, t+i*0.12);
+            });
+            g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t+0.7);
+            o.start(t); o.stop(t+0.7); break;
+        case 'die':
+            o.type = 'square'; o.frequency.setValueAtTime(400, t);
+            o.frequency.linearRampToValueAtTime(80, t+0.6);
+            g.gain.setValueAtTime(0.15, t); g.gain.linearRampToValueAtTime(0, t+0.7);
+            o.start(t); o.stop(t+0.7); break;
+        case 'levelComplete':
+            o.type = 'sine';
+            [523,659,784,1047,784,1047].forEach((f,i) => {
+                o.frequency.setValueAtTime(f, t+i*0.15);
+            });
+            g.gain.setValueAtTime(0.25, t); g.gain.linearRampToValueAtTime(0, t+1.0);
+            o.start(t); o.stop(t+1.0); break;
     }
-    return c;
 }
 
-const spriteCache = {};
-function getSprite(name, scale = 3) {
-    const key = `${name}_${scale}`;
-    if (!spriteCache[key]) {
-        const parts = name.split('.');
-        let data = SPRITES;
-        for (const p of parts) data = data[p];
-        spriteCache[key] = renderSprite(data, SPRITES.colors, scale);
+// --- LOAD IMAGES ---
+const spriteImages = {};
+let spritesLoaded = 0;
+const totalSprites = Object.keys(SPRITES).length;
+
+Object.entries(SPRITES).forEach(([key, src]) => {
+    const img = new Image();
+    img.onload = () => { spritesLoaded++; };
+    img.src = src;
+    spriteImages[key] = img;
+});
+
+// --- INPUT ---
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// --- GAME CONSTANTS ---
+const GRAVITY = 0.55;
+const JUMP_FORCE = -10.5;
+const MOVE_SPEED = 3.5;
+const CLIMB_SPEED = 2.5;
+const PLAYER_W = 36;
+const PLAYER_H = 42;
+
+// --- SOURCE INFO ---
+const SOURCES = [
+    { key: 'J', name: 'Jahwist Source', color: '#FFD700', desc: 'Uses YHWH, anthropomorphic God, Judah focus' },
+    { key: 'E', name: 'Elohist Source', color: '#87CEEB', desc: 'Uses Elohim, dreams & angels, Northern focus' },
+    { key: 'D', name: 'Deuteronomist Source', color: '#90EE90', desc: 'Law code, covenant theology, one sanctuary' },
+    { key: 'P', name: 'Priestly Source', color: '#DDA0DD', desc: 'Genealogies, rituals, transcendent God' }
+];
+
+// --- LEVEL DEFINITIONS ---
+function buildLevel(levelIdx) {
+    const platforms = [];
+    const ladders = [];
+    const enemies = [];
+    const scrollPos = { x: 0, y: 0 };
+    const playerStart = { x: 60, y: 510 };
+
+    // Ground
+    platforms.push({ x: 0, y: 560, w: 800, h: 40 });
+
+    if (levelIdx === 0) {
+        // J Source - Classic DK layout
+        platforms.push({ x: 0, y: 460, w: 700, h: 16 });
+        platforms.push({ x: 100, y: 360, w: 700, h: 16 });
+        platforms.push({ x: 0, y: 260, w: 700, h: 16 });
+        platforms.push({ x: 100, y: 160, w: 700, h: 16 });
+        platforms.push({ x: 250, y: 75, w: 300, h: 16 });
+
+        ladders.push({ x: 660, y: 460, h: 100 });
+        ladders.push({ x: 140, y: 360, h: 100 });
+        ladders.push({ x: 660, y: 260, h: 100 });
+        ladders.push({ x: 140, y: 160, h: 100 });
+        ladders.push({ x: 390, y: 75, h: 85 });
+
+        enemies.push({ x: 200, y: 444, w: 30, h: 16, speed: 1.5, minX: 0, maxX: 670, type: 'patrol' });
+        enemies.push({ x: 500, y: 344, w: 30, h: 16, speed: -2, minX: 100, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 300, y: 244, w: 30, h: 16, speed: 1.8, minX: 0, maxX: 670, type: 'patrol' });
+        enemies.push({ x: 600, y: 144, w: 30, h: 16, speed: -2.2, minX: 100, maxX: 770, type: 'patrol' });
+
+        scrollPos.x = 380; scrollPos.y = 30;
+        playerStart.x = 60; playerStart.y = 510;
     }
-    return spriteCache[key];
+    else if (levelIdx === 1) {
+        // E Source - Tower-like
+        platforms.push({ x: 50, y: 470, w: 250, h: 16 });
+        platforms.push({ x: 500, y: 470, w: 250, h: 16 });
+        platforms.push({ x: 250, y: 380, w: 300, h: 16 });
+        platforms.push({ x: 0, y: 290, w: 300, h: 16 });
+        platforms.push({ x: 500, y: 290, w: 300, h: 16 });
+        platforms.push({ x: 200, y: 200, w: 400, h: 16 });
+        platforms.push({ x: 300, y: 110, w: 200, h: 16 });
+
+        ladders.push({ x: 270, y: 470, h: 90 });
+        ladders.push({ x: 520, y: 380, h: 90 });
+        ladders.push({ x: 270, y: 290, h: 90 });
+        ladders.push({ x: 520, y: 200, h: 90 });
+        ladders.push({ x: 390, y: 110, h: 90 });
+        ladders.push({ x: 140, y: 380, h: 90 });
+
+        enemies.push({ x: 100, y: 454, w: 30, h: 16, speed: 1.5, minX: 50, maxX: 270, type: 'patrol' });
+        enemies.push({ x: 600, y: 454, w: 30, h: 16, speed: -1.5, minX: 500, maxX: 720, type: 'patrol' });
+        enemies.push({ x: 350, y: 364, w: 30, h: 16, speed: 2, minX: 250, maxX: 520, type: 'patrol' });
+        enemies.push({ x: 100, y: 274, w: 30, h: 16, speed: 1.8, minX: 0, maxX: 270, type: 'patrol' });
+        enemies.push({ x: 600, y: 274, w: 30, h: 16, speed: -1.8, minX: 500, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 350, y: 184, w: 30, h: 16, speed: 2.2, minX: 200, maxX: 570, type: 'patrol' });
+
+        scrollPos.x = 380; scrollPos.y = 65;
+        playerStart.x = 100; playerStart.y = 510;
+    }
+    else if (levelIdx === 2) {
+        // D Source - Zigzag
+        platforms.push({ x: 0, y: 480, w: 350, h: 16 });
+        platforms.push({ x: 450, y: 480, w: 350, h: 16 });
+        platforms.push({ x: 150, y: 400, w: 500, h: 16 });
+        platforms.push({ x: 0, y: 320, w: 350, h: 16 });
+        platforms.push({ x: 450, y: 320, w: 350, h: 16 });
+        platforms.push({ x: 150, y: 240, w: 500, h: 16 });
+        platforms.push({ x: 0, y: 160, w: 350, h: 16 });
+        platforms.push({ x: 450, y: 160, w: 350, h: 16 });
+        platforms.push({ x: 280, y: 80, w: 240, h: 16 });
+
+        ladders.push({ x: 310, y: 400, h: 80 });
+        ladders.push({ x: 620, y: 400, h: 80 });
+        ladders.push({ x: 180, y: 320, h: 80 });
+        ladders.push({ x: 480, y: 240, h: 80 });
+        ladders.push({ x: 180, y: 240, h: 80 });
+        ladders.push({ x: 620, y: 160, h: 80 });
+        ladders.push({ x: 310, y: 160, h: 80 });
+        ladders.push({ x: 390, y: 80, h: 80 });
+
+        enemies.push({ x: 100, y: 464, w: 30, h: 16, speed: 2, minX: 0, maxX: 320, type: 'patrol' });
+        enemies.push({ x: 550, y: 464, w: 30, h: 16, speed: -2, minX: 450, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 300, y: 384, w: 30, h: 16, speed: 2.5, minX: 150, maxX: 620, type: 'patrol' });
+        enemies.push({ x: 100, y: 304, w: 30, h: 16, speed: 1.5, minX: 0, maxX: 320, type: 'patrol' });
+        enemies.push({ x: 600, y: 304, w: 30, h: 16, speed: -2, minX: 450, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 350, y: 224, w: 30, h: 16, speed: -2.5, minX: 150, maxX: 620, type: 'patrol' });
+        enemies.push({ x: 200, y: 144, w: 30, h: 16, speed: 2.2, minX: 0, maxX: 320, type: 'patrol' });
+
+        scrollPos.x = 380; scrollPos.y = 35;
+        playerStart.x = 60; playerStart.y = 510;
+    }
+    else if (levelIdx === 3) {
+        // P Source - Many small platforms
+        platforms.push({ x: 0, y: 500, w: 200, h: 16 });
+        platforms.push({ x: 280, y: 500, w: 200, h: 16 });
+        platforms.push({ x: 560, y: 500, w: 240, h: 16 });
+        platforms.push({ x: 100, y: 420, w: 250, h: 16 });
+        platforms.push({ x: 450, y: 420, w: 250, h: 16 });
+        platforms.push({ x: 0, y: 340, w: 200, h: 16 });
+        platforms.push({ x: 300, y: 340, w: 200, h: 16 });
+        platforms.push({ x: 600, y: 340, w: 200, h: 16 });
+        platforms.push({ x: 150, y: 260, w: 200, h: 16 });
+        platforms.push({ x: 450, y: 260, w: 200, h: 16 });
+        platforms.push({ x: 50, y: 180, w: 300, h: 16 });
+        platforms.push({ x: 450, y: 180, w: 300, h: 16 });
+        platforms.push({ x: 250, y: 100, w: 300, h: 16 });
+
+        ladders.push({ x: 170, y: 500, h: 60 });
+        ladders.push({ x: 450, y: 500, h: 60 });
+        ladders.push({ x: 320, y: 420, h: 80 });
+        ladders.push({ x: 670, y: 420, h: 80 });
+        ladders.push({ x: 170, y: 340, h: 80 });
+        ladders.push({ x: 470, y: 340, h: 80 });
+        ladders.push({ x: 320, y: 260, h: 80 });
+        ladders.push({ x: 620, y: 260, h: 80 });
+        ladders.push({ x: 170, y: 180, h: 80 });
+        ladders.push({ x: 520, y: 180, h: 80 });
+        ladders.push({ x: 390, y: 100, h: 80 });
+
+        enemies.push({ x: 50, y: 484, w: 30, h: 16, speed: 1.5, minX: 0, maxX: 170, type: 'patrol' });
+        enemies.push({ x: 350, y: 484, w: 30, h: 16, speed: -1.5, minX: 280, maxX: 450, type: 'patrol' });
+        enemies.push({ x: 650, y: 484, w: 30, h: 16, speed: 2, minX: 560, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 200, y: 404, w: 30, h: 16, speed: 2, minX: 100, maxX: 320, type: 'patrol' });
+        enemies.push({ x: 550, y: 404, w: 30, h: 16, speed: -2, minX: 450, maxX: 670, type: 'patrol' });
+        enemies.push({ x: 80, y: 324, w: 30, h: 16, speed: 1.8, minX: 0, maxX: 170, type: 'patrol' });
+        enemies.push({ x: 380, y: 324, w: 30, h: 16, speed: -1.8, minX: 300, maxX: 470, type: 'patrol' });
+        enemies.push({ x: 680, y: 324, w: 30, h: 16, speed: 2, minX: 600, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 250, y: 244, w: 30, h: 16, speed: 2.5, minX: 150, maxX: 320, type: 'patrol' });
+        enemies.push({ x: 550, y: 244, w: 30, h: 16, speed: -2.5, minX: 450, maxX: 620, type: 'patrol' });
+
+        scrollPos.x = 380; scrollPos.y = 55;
+        playerStart.x = 60; playerStart.y = 510;
+    }
+
+    return { platforms, ladders, enemies, scrollPos, playerStart };
 }
 
-// ================================================================================
-// GAME STATE MANAGEMENT
-// ================================================================================
-const GameState = {
-    LOADING: 'loading',
-    TITLE: 'title',
-    INTRO: 'intro',
-    LEVEL_SELECT: 'levelSelect',
-    PLAYING: 'playing',
-    BOSS: 'boss',
-    SHOP: 'shop',
-    VICTORY: 'victory',
-    GAME_OVER: 'gameOver',
-    CUTSCENE: 'cutscene',
-    PAUSED: 'paused'
-};
-
-// ================================================================================
-// GAME DATA
-// ================================================================================
-const LEVELS = [
-    {
-        id: 'j',
-        name: 'THE JAHWIST SOURCE',
-        subtitle: 'Ancient narratives using YHWH',
-        color: '#f1c40f',
-        darkColor: '#8b7000',
-        bgColor: '#1a1508',
-        waves: 5,
-        bossName: 'THE GOLDEN SERPENT',
-        bossColor: '#f1c40f',
-        unlocked: true
-    },
-    {
-        id: 'e',
-        name: 'THE ELOHIST SOURCE',
-        subtitle: 'Stories calling God "Elohim"',
-        color: '#2ecc71',
-        darkColor: '#1a8c4a',
-        bgColor: '#081a0f',
-        waves: 6,
-        bossName: 'THE EMERALD LEVIATHAN',
-        bossColor: '#2ecc71',
-        unlocked: false
-    },
-    {
-        id: 'd',
-        name: 'THE DEUTERONOMIST',
-        subtitle: 'Laws and covenant renewal',
-        color: '#3498db',
-        darkColor: '#1a5c8c',
-        bgColor: '#081018',
-        waves: 7,
-        bossName: 'THE SAPPHIRE BEHEMOTH',
-        bossColor: '#3498db',
-        unlocked: false
-    },
-    {
-        id: 'p',
-        name: 'THE PRIESTLY SOURCE',
-        subtitle: 'Rituals, genealogies, and laws',
-        color: '#9b59b6',
-        darkColor: '#5c2a6c',
-        bgColor: '#10081a',
-        waves: 8,
-        bossName: 'THE ANCIENT SCRIBE',
-        bossColor: '#9b59b6',
-        unlocked: false
-    }
-];
-
-const UPGRADES = [
-    { id: 'speed1', name: 'Swift Feet I', desc: 'Move 15% faster', cost: 100, stat: 'speed', value: 0.15, bought: false },
-    { id: 'speed2', name: 'Swift Feet II', desc: 'Move 30% faster', cost: 300, stat: 'speed', value: 0.15, requires: 'speed1', bought: false },
-    { id: 'health1', name: 'Sturdy I', desc: '+1 Max Health', cost: 150, stat: 'maxHealth', value: 1, bought: false },
-    { id: 'health2', name: 'Sturdy II', desc: '+2 Max Health', cost: 400, stat: 'maxHealth', value: 2, requires: 'health1', bought: false },
-    { id: 'dash1', name: 'Quick Dash', desc: 'Faster dash cooldown', cost: 200, stat: 'dashCooldown', value: -15, bought: false },
-    { id: 'dash2', name: 'Shadow Dash', desc: 'Dash damages enemies', cost: 500, stat: 'dashDamage', value: true, requires: 'dash1', bought: false },
-    { id: 'magnet', name: 'Scroll Magnet', desc: 'Attract nearby pickups', cost: 250, stat: 'magnet', value: 80, bought: false },
-    { id: 'luck', name: 'Divine Favor', desc: 'Better powerup drops', cost: 350, stat: 'luck', value: 0.5, bought: false }
-];
-
-// ================================================================================
-// GAME CLASS
-// ================================================================================
-class Game {
-    constructor() {
-        this.state = GameState.LOADING;
-        this.prevState = null;
-        this.loadProgress = 0;
-
-        // Save data
-        this.save = this.loadSave();
-
-        // Current game session
-        this.player = null;
-        this.enemies = [];
-        this.bullets = [];
-        this.particles = [];
-        this.pickups = [];
-        this.texts = [];
-        this.boss = null;
-
-        // Level state
-        this.currentLevel = null;
-        this.wave = 0;
-        this.waveTimer = 0;
-        this.waveEnemies = 0;
-        this.levelScore = 0;
-
-        // Effects
-        this.screenShake = 0;
-        this.flash = 0;
-        this.flashColor = '#fff';
-        this.slowMo = 0;
-
-        // UI
-        this.menuSelection = 0;
-        this.menuItems = [];
-        this.cutsceneText = [];
-        this.cutsceneIndex = 0;
-        this.cutsceneTimer = 0;
-        this.typewriterText = '';
-        this.typewriterTarget = '';
-        this.typewriterTimer = 0;
-
-        // Input
-        this.keys = {};
-        this.keysJustPressed = {};
-
-        // Time
-        this.time = 0;
-        this.deltaTime = 1;
-
-        this.init();
-    }
-
-    loadSave() {
-        try {
-            const data = localStorage.getItem('biblicalDetectiveSave');
-            if (data) return JSON.parse(data);
-        } catch (e) {}
-        return {
-            coins: 0,
-            highScore: 0,
-            levelsCompleted: [],
-            upgrades: [],
-            totalPlayTime: 0
-        };
-    }
-
-    saveSave() {
-        localStorage.setItem('biblicalDetectiveSave', JSON.stringify(this.save));
-    }
-
-    init() {
-        // Input handlers
-        window.addEventListener('keydown', e => {
-            const key = e.key.toLowerCase();
-            if (!this.keys[key]) this.keysJustPressed[key] = true;
-            this.keys[key] = true;
-            if (['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','enter','escape'].includes(key)) {
-                e.preventDefault();
-            }
+// --- PARTICLE SYSTEM ---
+const particles = [];
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.5) * 8 - 2,
+            life: 30 + Math.random() * 20,
+            maxLife: 50,
+            color,
+            size: 2 + Math.random() * 4
         });
-        window.addEventListener('keyup', e => {
-            this.keys[e.key.toLowerCase()] = false;
+    }
+}
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.vy += 0.15; p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+function drawParticles() {
+    particles.forEach(p => {
+        const alpha = p.life / p.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    });
+    ctx.globalAlpha = 1;
+}
+
+// --- GAME STATE ---
+let gameState = 'title';
+let currentLevel = 0;
+let lives = 3;
+let score = 0;
+let levelData = null;
+let player = null;
+let levelEnemies = [];
+let invincibleTimer = 0;
+let levelCompleteTimer = 0;
+let gameOverTimer = 0;
+let victoryTimer = 0;
+let sourcesCollected = [false, false, false, false];
+let scrollBob = 0;
+let bgStars = [];
+for (let i = 0; i < 60; i++) bgStars.push({ x: Math.random()*800, y: Math.random()*600, s: Math.random()*2+1, b: Math.random() });
+
+function initLevel(idx) {
+    levelData = buildLevel(idx);
+    player = {
+        x: levelData.playerStart.x,
+        y: levelData.playerStart.y,
+        vx: 0, vy: 0,
+        w: PLAYER_W, h: PLAYER_H,
+        onGround: false,
+        onLadder: false,
+        climbing: false,
+        facing: 'south',
+        wasOnGround: false
+    };
+    levelEnemies = levelData.enemies.map(e => ({...e, startX: e.x}));
+    invincibleTimer = 60;
+    particles.length = 0;
+}
+
+// --- COLLISION HELPERS ---
+function rectOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function isOnLadder(px, py, pw) {
+    const cx = px + pw/2;
+    for (const L of levelData.ladders) {
+        if (cx > L.x && cx < L.x + 28 && py + PLAYER_H > L.y && py < L.y + L.h) return true;
+    }
+    return false;
+}
+
+function isLadderBelow(px, py, pw) {
+    const cx = px + pw/2;
+    for (const L of levelData.ladders) {
+        if (cx > L.x && cx < L.x + 28 && py + PLAYER_H >= L.y - 5 && py + PLAYER_H <= L.y + 10) return true;
+    }
+    return false;
+}
+
+// --- UPDATE ---
+function update() {
+    scrollBob += 0.05;
+
+    if (gameState === 'title') {
+        if (keys['Space'] || keys['Enter']) {
+            ensureAudio();
+            gameState = 'playing';
+            currentLevel = 0;
+            lives = 3;
+            score = 0;
+            sourcesCollected = [false, false, false, false];
+            initLevel(0);
+        }
+        return;
+    }
+
+    if (gameState === 'levelComplete') {
+        levelCompleteTimer--;
+        updateParticles();
+        if (levelCompleteTimer <= 0) {
+            currentLevel++;
+            if (currentLevel >= 4) {
+                gameState = 'victory';
+                victoryTimer = 300;
+                playSound('win');
+            } else {
+                gameState = 'playing';
+                initLevel(currentLevel);
+            }
+        }
+        return;
+    }
+
+    if (gameState === 'gameOver') {
+        gameOverTimer--;
+        if (gameOverTimer <= 0 && (keys['Space'] || keys['Enter'])) {
+            gameState = 'title';
+        }
+        return;
+    }
+
+    if (gameState === 'victory') {
+        updateParticles();
+        victoryTimer--;
+        if (victoryTimer % 15 === 0 && victoryTimer > 100) {
+            spawnParticles(Math.random()*800, Math.random()*400, ['#FFD700','#87CEEB','#90EE90','#DDA0DD'][Math.floor(Math.random()*4)], 10);
+        }
+        if (victoryTimer <= 0 && (keys['Space'] || keys['Enter'])) {
+            gameState = 'title';
+        }
+        return;
+    }
+
+    // --- PLAYING STATE ---
+    const P = player;
+
+    P.vx = 0;
+    if (keys['ArrowLeft'] || keys['KeyA']) { P.vx = -MOVE_SPEED; P.facing = 'west'; }
+    if (keys['ArrowRight'] || keys['KeyD']) { P.vx = MOVE_SPEED; P.facing = 'east'; }
+
+    const onLadder = isOnLadder(P.x, P.y, P.w);
+    const ladderBelow = isLadderBelow(P.x, P.y, P.w);
+
+    if (onLadder && (keys['ArrowUp'] || keys['KeyW'])) {
+        P.climbing = true;
+    }
+    if (ladderBelow && (keys['ArrowDown'] || keys['KeyS'])) {
+        P.climbing = true;
+        P.y += 5;
+    }
+
+    if (P.climbing) {
+        P.vy = 0;
+        if (keys['ArrowUp'] || keys['KeyW']) P.vy = -CLIMB_SPEED;
+        if (keys['ArrowDown'] || keys['KeyS']) P.vy = CLIMB_SPEED;
+        if (!isOnLadder(P.x, P.y, P.w)) P.climbing = false;
+        if ((keys['Space']) && P.onGround && !keys['ArrowDown'] && !keys['KeyS']) {
+            P.climbing = false;
+        }
+    }
+
+    if (!P.climbing) {
+        P.vy += GRAVITY;
+        if (P.vy > 12) P.vy = 12;
+    }
+
+    if ((keys['Space']) && P.onGround && !P.climbing) {
+        P.vy = JUMP_FORCE;
+        P.onGround = false;
+        playSound('jump');
+    }
+
+    P.x += P.vx;
+    for (const plat of levelData.platforms) {
+        if (rectOverlap({x: P.x, y: P.y, w: P.w, h: P.h}, plat)) {
+            if (P.vx > 0) P.x = plat.x - P.w;
+            if (P.vx < 0) P.x = plat.x + plat.w;
+        }
+    }
+
+    if (P.x < 0) P.x = 0;
+    if (P.x + P.w > 800) P.x = 800 - P.w;
+
+    P.wasOnGround = P.onGround;
+    P.y += P.vy;
+    P.onGround = false;
+
+    for (const plat of levelData.platforms) {
+        if (rectOverlap({x: P.x, y: P.y, w: P.w, h: P.h}, plat)) {
+            if (P.vy > 0) {
+                P.y = plat.y - P.h;
+                if (!P.wasOnGround && P.vy > 3) playSound('land');
+                P.vy = 0;
+                P.onGround = true;
+            } else if (P.vy < 0) {
+                P.y = plat.y + plat.h;
+                P.vy = 0;
+            }
+        }
+    }
+
+    if (P.y > 620) { loseLife(); return; }
+
+    for (const e of levelEnemies) {
+        e.x += e.speed;
+        if (e.x <= e.minX || e.x + e.w >= e.maxX) e.speed *= -1;
+    }
+
+    if (invincibleTimer > 0) {
+        invincibleTimer--;
+    } else {
+        for (const e of levelEnemies) {
+            if (rectOverlap({x: P.x+4, y: P.y+4, w: P.w-8, h: P.h-8}, e)) {
+                loseLife(); return;
+            }
+        }
+    }
+
+    const sc = levelData.scrollPos;
+    const scrollRect = { x: sc.x, y: sc.y + Math.sin(scrollBob)*6, w: 40, h: 50 };
+    if (rectOverlap({x: P.x, y: P.y, w: P.w, h: P.h}, scrollRect)) {
+        sourcesCollected[currentLevel] = true;
+        score += 2500;
+        playSound('levelComplete');
+        spawnParticles(sc.x + 20, sc.y + 25, SOURCES[currentLevel].color, 30);
+        gameState = 'levelComplete';
+        levelCompleteTimer = 150;
+    }
+
+    updateParticles();
+}
+
+function loseLife() {
+    lives--;
+    playSound(lives <= 0 ? 'die' : 'hurt');
+    if (lives <= 0) {
+        gameState = 'gameOver';
+        gameOverTimer = 120;
+    } else {
+        spawnParticles(player.x + PLAYER_W/2, player.y + PLAYER_H/2, '#FF4444', 20);
+        player.x = levelData.playerStart.x;
+        player.y = levelData.playerStart.y;
+        player.vx = 0; player.vy = 0;
+        player.climbing = false;
+        invincibleTimer = 90;
+    }
+}
+
+// --- DRAW ---
+function draw() {
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, 800, 600);
+
+    bgStars.forEach(s => {
+        s.b += 0.02;
+        ctx.globalAlpha = 0.3 + Math.sin(s.b) * 0.3;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(s.x, s.y, s.s, s.s);
+    });
+    ctx.globalAlpha = 1;
+
+    if (gameState === 'title') { drawTitle(); return; }
+    if (gameState === 'gameOver') { drawGameOver(); return; }
+    if (gameState === 'victory') { drawVictory(); return; }
+
+    drawLevel();
+    drawEnemies();
+    drawScroll();
+    drawPlayer();
+    drawParticles();
+    drawHUD();
+
+    if (gameState === 'levelComplete') drawLevelComplete();
+}
+
+function drawTitle() {
+    const t = Date.now() / 1000;
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 48px monospace';
+    ctx.fillText('BIBLICAL DETECTIVE', 400, 150);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '20px monospace';
+    ctx.fillText('The Documentary Hypothesis', 400, 190);
+
+    if (spriteImages.south && spriteImages.south.complete) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(spriteImages.south, 364, 230, 72, 72);
+    }
+
+    SOURCES.forEach((s, i) => {
+        const bx = 120 + i * 160;
+        ctx.fillStyle = s.color;
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(s.key + ' Source', bx, 350);
+        ctx.fillStyle = '#888';
+        ctx.font = '11px monospace';
+        const words = s.desc.split(', ');
+        words.forEach((w, j) => {
+            ctx.fillText(w, bx, 370 + j * 15);
         });
+    });
 
-        // Start loading
-        this.load();
-    }
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '18px monospace';
+    if (Math.sin(t * 3) > 0) ctx.fillText('PRESS SPACE TO START', 400, 470);
 
-    async load() {
-        // Simulate loading and initialize
-        for (let i = 0; i <= 100; i += 10) {
-            this.loadProgress = i;
-            document.getElementById('loadingFill').style.width = i + '%';
-            await new Promise(r => setTimeout(r, 50));
-        }
+    ctx.fillStyle = '#888';
+    ctx.font = '14px monospace';
+    ctx.fillText('Arrow Keys / WASD to move | SPACE to jump', 400, 520);
+    ctx.fillText('Climb ladders to reach the Source Scrolls!', 400, 545);
+    ctx.textAlign = 'left';
+}
 
-        audio.init();
+function drawLevel() {
+    const src = SOURCES[currentLevel];
 
-        // Apply saved upgrades
-        this.applyUpgrades();
+    for (const p of levelData.platforms) {
+        const grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+        grad.addColorStop(0, '#8B6914');
+        grad.addColorStop(1, '#5C4A0E');
+        ctx.fillStyle = grad;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
 
-        // Unlock levels based on completion
-        LEVELS.forEach((level, i) => {
-            if (i === 0 || this.save.levelsCompleted.includes(LEVELS[i-1].id)) {
-                level.unlocked = true;
-            }
-        });
+        ctx.fillStyle = '#A67C00';
+        ctx.fillRect(p.x, p.y, p.w, 3);
 
-        document.getElementById('loadingScreen').classList.add('hidden');
-        this.state = GameState.TITLE;
-        this.menuSelection = 0;
-        this.menuItems = ['START GAME', 'UPGRADES', 'HOW TO PLAY'];
-
-        requestAnimationFrame(() => this.gameLoop());
-    }
-
-    applyUpgrades() {
-        // Reset base stats
-        this.baseStats = {
-            speed: 4,
-            maxHealth: 3,
-            dashCooldown: 45,
-            dashDamage: false,
-            magnet: 0,
-            luck: 0
-        };
-
-        // Apply purchased upgrades
-        for (const upId of this.save.upgrades) {
-            const up = UPGRADES.find(u => u.id === upId);
-            if (up) {
-                if (typeof up.value === 'boolean') {
-                    this.baseStats[up.stat] = up.value;
-                } else {
-                    this.baseStats[up.stat] += up.value;
-                }
-            }
-        }
-    }
-
-    // ================================================================================
-    // GAME LOOP
-    // ================================================================================
-    gameLoop() {
-        this.time++;
-        this.deltaTime = this.slowMo > 0 ? 0.3 : 1;
-        if (this.slowMo > 0) this.slowMo--;
-
-        this.update();
-        this.draw();
-
-        // Clear just-pressed keys
-        this.keysJustPressed = {};
-
-        requestAnimationFrame(() => this.gameLoop());
-    }
-
-    update() {
-        switch (this.state) {
-            case GameState.TITLE: this.updateTitle(); break;
-            case GameState.INTRO: this.updateIntro(); break;
-            case GameState.LEVEL_SELECT: this.updateLevelSelect(); break;
-            case GameState.PLAYING: this.updatePlaying(); break;
-            case GameState.BOSS: this.updateBoss(); break;
-            case GameState.SHOP: this.updateShop(); break;
-            case GameState.VICTORY: this.updateVictory(); break;
-            case GameState.GAME_OVER: this.updateGameOver(); break;
-            case GameState.CUTSCENE: this.updateCutscene(); break;
-            case GameState.PAUSED: this.updatePaused(); break;
-        }
-
-        // Update effects
-        if (this.screenShake > 0) this.screenShake -= this.deltaTime;
-        if (this.flash > 0) this.flash -= this.deltaTime * 0.1;
-    }
-
-    // ================================================================================
-    // TITLE SCREEN
-    // ================================================================================
-    updateTitle() {
-        if (this.keysJustPressed['arrowup'] || this.keysJustPressed['w']) {
-            this.menuSelection = (this.menuSelection - 1 + this.menuItems.length) % this.menuItems.length;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['arrowdown'] || this.keysJustPressed['s']) {
-            this.menuSelection = (this.menuSelection + 1) % this.menuItems.length;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            audio.playConfirm();
-            switch (this.menuSelection) {
-                case 0: // Start
-                    this.state = GameState.LEVEL_SELECT;
-                    this.menuSelection = 0;
-                    break;
-                case 1: // Upgrades
-                    this.state = GameState.SHOP;
-                    this.menuSelection = 0;
-                    break;
-                case 2: // How to play
-                    this.showCutscene([
-                        "HOW TO PLAY",
-                        "Arrow Keys or WASD: Move",
-                        "SPACE or SHIFT: Dash",
-                        "Collect sources, avoid enemies!",
-                        "Defeat the boss of each level.",
-                        "Earn coins to buy upgrades.",
-                        "Good luck, Detective!"
-                    ], GameState.TITLE);
-                    break;
-            }
-        }
-    }
-
-    drawTitle() {
-        // Background
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        // Animated background pattern
-        ctx.strokeStyle = '#151530';
-        for (let i = 0; i < 20; i++) {
-            const y = (this.time * 0.5 + i * 40) % (H + 40) - 20;
+        ctx.strokeStyle = '#4A3500';
+        ctx.lineWidth = 1;
+        for (let bx = p.x; bx < p.x + p.w; bx += 32) {
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(W, y);
+            ctx.moveTo(bx, p.y); ctx.lineTo(bx, p.y + p.h);
             ctx.stroke();
         }
-
-        // Title with glow
-        const titleY = 150 + Math.sin(this.time * 0.05) * 5;
-        ctx.shadowColor = '#feca57';
-        ctx.shadowBlur = 20 + Math.sin(this.time * 0.1) * 10;
-        ctx.fillStyle = '#feca57';
-        ctx.font = '32px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('BIBLICAL', W/2, titleY);
-        ctx.fillText('DETECTIVE', W/2, titleY + 45);
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = '#888';
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText('THE DOCUMENTARY HYPOTHESIS', W/2, titleY + 85);
-
-        // Menu items
-        this.menuItems.forEach((item, i) => {
-            const y = 320 + i * 50;
-            const selected = i === this.menuSelection;
-
-            if (selected) {
-                ctx.fillStyle = '#feca57';
-                ctx.fillText('►', W/2 - 120, y);
-                ctx.fillText('◄', W/2 + 120, y);
-            }
-
-            ctx.fillStyle = selected ? '#fff' : '#666';
-            ctx.font = `${selected ? 16 : 14}px "Press Start 2P"`;
-            ctx.fillText(item, W/2, y);
-        });
-
-        // Stats
-        ctx.fillStyle = '#444';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText(`HIGH SCORE: ${this.save.highScore}`, W/2, H - 60);
-        ctx.fillText(`COINS: ${this.save.coins}`, W/2, H - 40);
-
-        // Detective sprite
-        const sprite = getSprite('detective.standR', 4);
-        ctx.drawImage(sprite, 100 + Math.sin(this.time * 0.08) * 5, 280);
-
-        // Mirrored on right
-        ctx.save();
-        ctx.translate(W - 100, 280);
-        ctx.scale(-1, 1);
-        ctx.drawImage(sprite, -sprite.width + Math.sin(this.time * 0.08 + 1) * 5, 0);
-        ctx.restore();
     }
 
-    // ================================================================================
-    // LEVEL SELECT
-    // ================================================================================
-    updateLevelSelect() {
-        if (this.keysJustPressed['arrowleft'] || this.keysJustPressed['a']) {
-            this.menuSelection = (this.menuSelection - 1 + LEVELS.length) % LEVELS.length;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['arrowright'] || this.keysJustPressed['d']) {
-            this.menuSelection = (this.menuSelection + 1) % LEVELS.length;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['escape']) {
-            this.state = GameState.TITLE;
-            this.menuSelection = 0;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            const level = LEVELS[this.menuSelection];
-            if (level.unlocked) {
-                audio.playConfirm();
-                this.startLevel(level);
-            }
+    for (const L of levelData.ladders) {
+        const lw = 28;
+        ctx.fillStyle = '#6699CC';
+        ctx.fillRect(L.x, L.y, 4, L.h);
+        ctx.fillRect(L.x + lw - 4, L.y, 4, L.h);
+
+        ctx.fillStyle = '#88AADD';
+        for (let ry = L.y + 8; ry < L.y + L.h; ry += 18) {
+            ctx.fillRect(L.x + 2, ry, lw - 4, 3);
         }
     }
 
-    drawLevelSelect() {
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        ctx.fillStyle = '#feca57';
-        ctx.font = '20px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('SELECT SOURCE', W/2, 60);
-
-        // Level cards
-        LEVELS.forEach((level, i) => {
-            const x = 100 + i * 160;
-            const y = 200;
-            const selected = i === this.menuSelection;
-            const completed = this.save.levelsCompleted.includes(level.id);
-
-            // Card background
-            ctx.fillStyle = level.unlocked ? level.darkColor : '#222';
-            ctx.fillRect(x - 60, y - 80, 120, 200);
-
-            // Border
-            ctx.strokeStyle = selected ? '#fff' : (level.unlocked ? level.color : '#444');
-            ctx.lineWidth = selected ? 4 : 2;
-            ctx.strokeRect(x - 60, y - 80, 120, 200);
-
-            // Letter
-            ctx.fillStyle = level.unlocked ? level.color : '#444';
-            ctx.font = '48px "Press Start 2P"';
-            ctx.fillText(level.id.toUpperCase(), x, y + 10);
-
-            // Completion star
-            if (completed) {
-                ctx.fillStyle = '#feca57';
-                ctx.font = '20px "Press Start 2P"';
-                ctx.fillText('★', x, y + 60);
-            }
-
-            // Lock
-            if (!level.unlocked) {
-                ctx.fillStyle = '#666';
-                ctx.font = '24px "Press Start 2P"';
-                ctx.fillText('🔒', x, y + 60);
-            }
-        });
-
-        // Selected level info
-        const level = LEVELS[this.menuSelection];
-        ctx.fillStyle = level.color;
-        ctx.font = '14px "Press Start 2P"';
-        ctx.fillText(level.name, W/2, 450);
-        ctx.fillStyle = '#888';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText(level.subtitle, W/2, 480);
-        ctx.fillText(`WAVES: ${level.waves} + BOSS`, W/2, 510);
-
-        if (!level.unlocked) {
-            ctx.fillStyle = '#e74c3c';
-            ctx.fillText('COMPLETE PREVIOUS LEVEL TO UNLOCK', W/2, 540);
-        }
-
-        ctx.fillStyle = '#444';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText('← → SELECT   ENTER START   ESC BACK', W/2, H - 30);
-    }
-
-    // ================================================================================
-    // GAMEPLAY
-    // ================================================================================
-    startLevel(level) {
-        this.currentLevel = level;
-        this.wave = 0;
-        this.waveTimer = 120;
-        this.waveEnemies = 0;
-        this.levelScore = 0;
-
-        // Create player
-        this.player = {
-            x: W / 2,
-            y: H / 2,
-            vx: 0,
-            vy: 0,
-            speed: this.baseStats.speed,
-            maxHealth: this.baseStats.maxHealth,
-            health: this.baseStats.maxHealth,
-            facing: 'R',
-            frame: 'standR',
-            animTimer: 0,
-            invincible: 60,
-            dashTimer: 0,
-            dashCooldown: 0,
-            trail: [],
-            combo: 0,
-            comboTimer: 0
-        };
-
-        this.enemies = [];
-        this.bullets = [];
-        this.particles = [];
-        this.pickups = [];
-        this.texts = [];
-        this.boss = null;
-
-        // Source scroll fragments to collect!
-        const fragmentCount = 3 + LEVELS.indexOf(level);
-        this.scrolls = [];
-        this.scrollsTotal = fragmentCount;
-        this.scrollsCollected = 0;
-        this.bossUnlocked = false;
-        for (let i = 0; i < fragmentCount; i++) {
-            this.scrolls.push({
-                x: 80 + Math.random() * (W - 160),
-                y: 100 + Math.random() * (H - 180),
-                collected: false,
-                pulse: Math.random() * Math.PI * 2,
-                spawnDelay: i * 120 + 60, // stagger appearance
-                visible: i === 0 // first one visible right away
-            });
-        }
-
-        // Show level intro
-        this.showCutscene([
-            level.name,
-            level.subtitle,
-            `Find ${fragmentCount} scroll fragments!`,
-            `Collect them all, then defeat`,
-            `${level.bossName}!`
-        ], GameState.PLAYING);
-    }
-
-    updatePlaying() {
-        if (this.keysJustPressed['escape']) {
-            this.prevState = this.state;
-            this.state = GameState.PAUSED;
-            return;
-        }
-
-        const dt = this.deltaTime;
-
-        // Update player
-        this.updatePlayer(dt);
-
-        // Update enemies
-        this.updateEnemies(dt);
-
-        // Update bullets
-        this.updateBullets(dt);
-
-        // Update pickups
-        this.updatePickups(dt);
-
-        // Update particles
-        this.updateParticles(dt);
-
-        // Update scroll collectibles
-        this.updateScrolls(dt);
-
-        // Update texts
-        this.texts = this.texts.filter(t => {
-            t.y += t.vy * dt;
-            t.life -= dt;
-            return t.life > 0;
-        });
-
-        // Wave management - keep spawning enemies until all scrolls collected
-        this.waveTimer -= dt;
-        if (this.waveTimer <= 0 && this.enemies.length === 0) {
-            if (this.bossUnlocked) {
-                // All scrolls collected - boss time!
-                this.startBoss();
-            } else {
-                this.wave++;
-                this.startWave();
-            }
-        }
-
-        // Combo decay
-        if (this.player.comboTimer > 0) {
-            this.player.comboTimer -= dt;
-            if (this.player.comboTimer <= 0) {
-                this.player.combo = 0;
-            }
-        }
-    }
-
-    updateScrolls(dt) {
-        const p = this.player;
-        const level = this.currentLevel;
-        const magnetRange = this.baseStats.magnet;
-
-        this.scrolls.forEach((scroll, idx) => {
-            if (scroll.collected) return;
-
-            // Reveal scrolls over time
-            if (!scroll.visible) {
-                scroll.spawnDelay -= dt;
-                if (scroll.spawnDelay <= 0) {
-                    scroll.visible = true;
-                    // Announce it
-                    this.texts.push({
-                        x: scroll.x, y: scroll.y - 30,
-                        text: `FRAGMENT ${idx + 1}!`,
-                        color: level.color,
-                        life: 80, vy: -1, size: 10
-                    });
-                    // Spawn particles to draw attention
-                    for (let i = 0; i < 12; i++) {
-                        const angle = (i / 12) * Math.PI * 2;
-                        this.particles.push({
-                            x: scroll.x, y: scroll.y,
-                            vx: Math.cos(angle) * 3,
-                            vy: Math.sin(angle) * 3,
-                            life: 30, color: level.color, size: 4
-                        });
-                    }
-                }
-                return;
-            }
-
-            scroll.pulse += 0.08 * dt;
-
-            // Magnet pull
-            const dist = Math.hypot(p.x - scroll.x, p.y - scroll.y);
-            if (magnetRange > 0 && dist < magnetRange && dist > 30) {
-                const angle = Math.atan2(p.y - scroll.y, p.x - scroll.x);
-                scroll.x += Math.cos(angle) * 1.5;
-                scroll.y += Math.sin(angle) * 1.5;
-            }
-
-            // Collect!
-            if (dist < 35) {
-                scroll.collected = true;
-                this.scrollsCollected++;
-                this.levelScore += 500;
-                audio.playCollect();
-                this.screenShake = 8;
-
-                // Big collection effect
-                for (let i = 0; i < 25; i++) {
-                    const angle = (i / 25) * Math.PI * 2;
-                    this.particles.push({
-                        x: scroll.x, y: scroll.y,
-                        vx: Math.cos(angle) * (2 + Math.random() * 4),
-                        vy: Math.sin(angle) * (2 + Math.random() * 4),
-                        life: 40, color: level.color, size: 4 + Math.random() * 4
-                    });
-                }
-
-                this.texts.push({
-                    x: scroll.x, y: scroll.y - 20,
-                    text: `${level.id.toUpperCase()} FRAGMENT ${this.scrollsCollected}/${this.scrollsTotal}`,
-                    color: level.color,
-                    life: 80, vy: -1.5, size: 12
-                });
-                this.texts.push({
-                    x: scroll.x, y: scroll.y + 10,
-                    text: '+500',
-                    color: '#fff',
-                    life: 50, vy: -2, size: 10
-                });
-
-                // All scrolls collected?
-                if (this.scrollsCollected >= this.scrollsTotal) {
-                    this.bossUnlocked = true;
-                    this.flash = 1;
-                    this.flashColor = level.color;
-                    this.screenShake = 20;
-                    audio.playPowerup();
-
-                    this.texts.push({
-                        x: W / 2, y: H / 2 - 40,
-                        text: `ALL FRAGMENTS FOUND!`,
-                        color: '#feca57',
-                        life: 120, vy: 0, size: 16
-                    });
-                    this.texts.push({
-                        x: W / 2, y: H / 2,
-                        text: `PREPARE FOR BOSS!`,
-                        color: '#e74c3c',
-                        life: 120, vy: 0, size: 14
-                    });
-                }
-            }
-        });
-    }
-
-    updatePlayer(dt) {
-        const p = this.player;
-
-        // Input
-        let dx = 0, dy = 0;
-        if (this.keys['arrowleft'] || this.keys['a']) dx -= 1;
-        if (this.keys['arrowright'] || this.keys['d']) dx += 1;
-        if (this.keys['arrowup'] || this.keys['w']) dy -= 1;
-        if (this.keys['arrowdown'] || this.keys['s']) dy += 1;
-
-        if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
-
-        // Dash
-        if ((this.keysJustPressed[' '] || this.keysJustPressed['shift']) &&
-            p.dashCooldown <= 0 && (dx !== 0 || dy !== 0)) {
-            p.dashTimer = 12;
-            p.dashCooldown = this.baseStats.dashCooldown;
-            p.vx = dx * 20;
-            p.vy = dy * 20;
-            audio.playDash();
-
-            for (let i = 0; i < 10; i++) {
-                this.particles.push({
-                    x: p.x, y: p.y,
-                    vx: -dx * 3 + (Math.random() - 0.5) * 2,
-                    vy: -dy * 3 + (Math.random() - 0.5) * 2,
-                    life: 20, color: '#feca57', size: 4
-                });
-            }
-        }
-
-        // Movement
-        if (p.dashTimer > 0) {
-            p.dashTimer -= dt;
-            p.trail.push({ x: p.x, y: p.y, alpha: 1 });
-
-            // Dash damage enemies
-            if (this.baseStats.dashDamage) {
-                this.enemies.forEach(e => {
-                    if (Math.hypot(p.x - e.x, p.y - e.y) < 30) {
-                        this.damageEnemy(e, 1);
-                    }
-                });
-            }
-        } else {
-            p.vx = p.vx * 0.8 + dx * p.speed * 0.4;
-            p.vy = p.vy * 0.8 + dy * p.speed * 0.4;
-        }
-
-        if (p.dashCooldown > 0) p.dashCooldown -= dt;
-        if (p.invincible > 0) p.invincible -= dt;
-
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-
-        // Bounds
-        p.x = Math.max(20, Math.min(W - 20, p.x));
-        p.y = Math.max(60, Math.min(H - 20, p.y));
-
-        // Trail decay
-        p.trail = p.trail.filter(t => { t.alpha -= 0.1; return t.alpha > 0; });
-
-        // Animation
-        if (dx > 0) p.facing = 'R';
-        if (dx < 0) p.facing = 'L';
-
-        if (Math.abs(p.vx) > 0.5 || Math.abs(p.vy) > 0.5) {
-            p.animTimer += dt;
-            const f = Math.floor(p.animTimer / 6) % 2 + 1;
-            p.frame = `walk${p.facing}${f}`;
-        } else {
-            p.frame = `stand${p.facing}`;
-            p.animTimer = 0;
-        }
-    }
-
-    startWave() {
-        this.waveTimer = 999999; // Don't auto-advance until enemies cleared
-        // Fewer enemies per wave so it's about dodging to get scrolls, not grinding
-        this.waveEnemies = 2 + Math.min(this.wave, 5);
-        audio.playWave();
-
-        this.texts.push({
-            x: W/2, y: H/2,
-            text: `WAVE ${this.wave}`,
-            color: this.currentLevel.color,
-            life: 60, vy: -0.5, size: 20
-        });
-
-        // Spawn enemies
-        for (let i = 0; i < this.waveEnemies; i++) {
-            setTimeout(() => this.spawnEnemy(), i * 300);
-        }
-
-        // Reveal next scroll on certain waves
-        if (this.scrolls) {
-            const nextHidden = this.scrolls.find(s => !s.visible && !s.collected);
-            if (nextHidden) {
-                nextHidden.spawnDelay = Math.min(nextHidden.spawnDelay, 90);
-            }
-        }
-    }
-
-    spawnEnemy() {
-        const types = ['chaser', 'shooter', 'bomber'];
-        const type = types[Math.floor(Math.random() * Math.min(types.length, 1 + Math.floor(this.wave / 2)))];
-
-        let x, y;
-        const side = Math.floor(Math.random() * 4);
-        switch (side) {
-            case 0: x = -30; y = Math.random() * H; break;
-            case 1: x = W + 30; y = Math.random() * H; break;
-            case 2: x = Math.random() * W; y = -30; break;
-            case 3: x = Math.random() * W; y = H + 30; break;
-        }
-
-        const enemy = {
-            x, y, type,
-            health: type === 'bomber' ? 2 : (type === 'shooter' ? 2 : 1),
-            maxHealth: type === 'bomber' ? 2 : (type === 'shooter' ? 2 : 1),
-            speed: type === 'chaser' ? 2 : 1.5,
-            angle: Math.atan2(this.player.y - y, this.player.x - x),
-            shootTimer: 60 + Math.random() * 60,
-            wobble: Math.random() * Math.PI * 2,
-            size: type === 'bomber' ? 20 : 16,
-            flash: 0
-        };
-
-        this.enemies.push(enemy);
-    }
-
-    updateEnemies(dt) {
-        const p = this.player;
-
-        this.enemies.forEach(e => {
-            e.wobble += 0.1 * dt;
-            if (e.flash > 0) e.flash -= dt;
-
-            // Movement based on type
-            const toPlayer = Math.atan2(p.y - e.y, p.x - e.x);
-
-            if (e.type === 'chaser') {
-                let angleDiff = toPlayer - e.angle;
-                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                e.angle += Math.sign(angleDiff) * 0.05 * dt;
-                e.angle += Math.sin(e.wobble) * 0.02;
-
-                e.x += Math.cos(e.angle) * e.speed * dt;
-                e.y += Math.sin(e.angle) * e.speed * dt;
-            } else if (e.type === 'shooter') {
-                // Keep distance and shoot
-                const dist = Math.hypot(p.x - e.x, p.y - e.y);
-                if (dist < 150) {
-                    e.x -= Math.cos(toPlayer) * e.speed * dt;
-                    e.y -= Math.sin(toPlayer) * e.speed * dt;
-                } else if (dist > 250) {
-                    e.x += Math.cos(toPlayer) * e.speed * 0.5 * dt;
-                    e.y += Math.sin(toPlayer) * e.speed * 0.5 * dt;
-                }
-
-                e.shootTimer -= dt;
-                if (e.shootTimer <= 0) {
-                    e.shootTimer = 90 + Math.random() * 60;
-                    this.bullets.push({
-                        x: e.x, y: e.y,
-                        vx: Math.cos(toPlayer) * 3,
-                        vy: Math.sin(toPlayer) * 3,
-                        enemy: true, size: 6, life: 180,
-                        color: '#ff6666'
-                    });
-                }
-            } else if (e.type === 'bomber') {
-                // Slowly approach and explode nearby
-                e.x += Math.cos(toPlayer) * e.speed * 0.7 * dt;
-                e.y += Math.sin(toPlayer) * e.speed * 0.7 * dt;
-
-                if (Math.hypot(p.x - e.x, p.y - e.y) < 40) {
-                    // Explode!
-                    this.damageEnemy(e, 999);
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (i / 8) * Math.PI * 2;
-                        this.bullets.push({
-                            x: e.x, y: e.y,
-                            vx: Math.cos(angle) * 4,
-                            vy: Math.sin(angle) * 4,
-                            enemy: true, size: 8, life: 60,
-                            color: '#ff4444'
-                        });
-                    }
-                }
-            }
-
-            // Wrap around edges
-            if (e.x < -50) e.x = W + 50;
-            if (e.x > W + 50) e.x = -50;
-            if (e.y < -50) e.y = H + 50;
-            if (e.y > H + 50) e.y = -50;
-
-            // Collision with player
-            if (p.invincible <= 0 && p.dashTimer <= 0) {
-                if (Math.hypot(p.x - e.x, p.y - e.y) < e.size + 15) {
-                    this.hitPlayer();
-                }
-            }
-        });
-
-        // Remove dead enemies
-        this.enemies = this.enemies.filter(e => e.health > 0);
-    }
-
-    damageEnemy(e, damage) {
-        e.health -= damage;
-        e.flash = 10;
-        this.screenShake = 5;
-        audio.playHit();
-
-        // Particles
-        for (let i = 0; i < 8; i++) {
-            this.particles.push({
-                x: e.x, y: e.y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                life: 20, color: this.currentLevel.color, size: 4
-            });
-        }
-
-        if (e.health <= 0) {
-            this.killEnemy(e);
-        }
-    }
-
-    killEnemy(e) {
-        // Score with combo
-        this.player.combo++;
-        this.player.comboTimer = 120;
-        const points = 100 * this.player.combo;
-        this.levelScore += points;
-
-        this.texts.push({
-            x: e.x, y: e.y - 20,
-            text: `+${points}`,
-            color: '#fff', life: 40, vy: -2, size: 10
-        });
-
-        if (this.player.combo > 1) {
-            this.texts.push({
-                x: e.x, y: e.y - 40,
-                text: `${this.player.combo}x COMBO!`,
-                color: '#feca57', life: 40, vy: -1, size: 8
-            });
-        }
-
-        // Drop pickup
-        if (Math.random() < 0.3 + this.baseStats.luck * 0.2) {
-            const types = ['coin', 'coin', 'coin', 'health', 'power'];
-            this.pickups.push({
-                x: e.x, y: e.y,
-                type: types[Math.floor(Math.random() * types.length)],
-                life: 600
-            });
-        }
-
-        // Big explosion particles
-        for (let i = 0; i < 15; i++) {
-            const angle = (i / 15) * Math.PI * 2;
-            this.particles.push({
-                x: e.x, y: e.y,
-                vx: Math.cos(angle) * (2 + Math.random() * 3),
-                vy: Math.sin(angle) * (2 + Math.random() * 3),
-                life: 30, color: this.currentLevel.color, size: 3 + Math.random() * 4
-            });
-        }
-    }
-
-    updateBullets(dt) {
-        this.bullets = this.bullets.filter(b => {
-            b.x += b.vx * dt;
-            b.y += b.vy * dt;
-            b.life -= dt;
-
-            // Check collision with player
-            if (b.enemy && this.player.invincible <= 0 && this.player.dashTimer <= 0) {
-                if (Math.hypot(this.player.x - b.x, this.player.y - b.y) < b.size + 12) {
-                    this.hitPlayer();
-                    return false;
-                }
-            }
-
-            return b.life > 0 && b.x > -20 && b.x < W + 20 && b.y > -20 && b.y < H + 20;
-        });
-    }
-
-    updatePickups(dt) {
-        const p = this.player;
-        const magnetRange = this.baseStats.magnet;
-
-        this.pickups = this.pickups.filter(pk => {
-            pk.life -= dt;
-
-            // Magnet effect
-            const dist = Math.hypot(p.x - pk.x, p.y - pk.y);
-            if (magnetRange > 0 && dist < magnetRange) {
-                const angle = Math.atan2(p.y - pk.y, p.x - pk.x);
-                pk.x += Math.cos(angle) * 3;
-                pk.y += Math.sin(angle) * 3;
-            }
-
-            // Collection
-            if (dist < 25) {
-                audio.playCollect();
-                switch (pk.type) {
-                    case 'coin':
-                        this.save.coins += 10;
-                        this.levelScore += 50;
-                        this.texts.push({ x: pk.x, y: pk.y - 10, text: '+10', color: '#feca57', life: 30, vy: -2, size: 10 });
-                        break;
-                    case 'health':
-                        if (p.health < p.maxHealth) {
-                            p.health++;
-                            this.texts.push({ x: pk.x, y: pk.y - 10, text: '+HP', color: '#e74c3c', life: 30, vy: -2, size: 10 });
-                        }
-                        break;
-                    case 'power':
-                        p.invincible = 180;
-                        audio.playPowerup();
-                        this.texts.push({ x: pk.x, y: pk.y - 10, text: 'SHIELD!', color: '#9b59b6', life: 40, vy: -2, size: 12 });
-                        break;
-                }
-                return false;
-            }
-
-            return pk.life > 0;
-        });
-    }
-
-    updateParticles(dt) {
-        this.particles = this.particles.filter(p => {
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
-            p.vx *= 0.95;
-            p.vy *= 0.95;
-            p.life -= dt;
-            return p.life > 0;
-        });
-    }
-
-    hitPlayer() {
-        const p = this.player;
-        p.health--;
-        p.invincible = 90;
-        p.combo = 0;
-        this.screenShake = 15;
-        this.slowMo = 15;
-        this.flash = 1;
-        this.flashColor = '#e74c3c';
-        audio.playHit();
-
-        // Knockback
-        const nearestEnemy = this.enemies.reduce((best, e) => {
-            const d = Math.hypot(p.x - e.x, p.y - e.y);
-            return d < best.d ? { d, e } : best;
-        }, { d: 9999, e: null });
-
-        if (nearestEnemy.e) {
-            const a = Math.atan2(p.y - nearestEnemy.e.y, p.x - nearestEnemy.e.x);
-            p.vx = Math.cos(a) * 12;
-            p.vy = Math.sin(a) * 12;
-        }
-
-        // Particles
-        for (let i = 0; i < 15; i++) {
-            this.particles.push({
-                x: p.x, y: p.y,
-                vx: (Math.random() - 0.5) * 8,
-                vy: (Math.random() - 0.5) * 8,
-                life: 30, color: '#e74c3c', size: 4 + Math.random() * 4
-            });
-        }
-
-        if (p.health <= 0) {
-            this.gameOver();
-        }
-    }
-
-    gameOver() {
-        audio.playGameOver();
-        this.state = GameState.GAME_OVER;
-        this.save.coins += Math.floor(this.levelScore / 100);
-        if (this.levelScore > this.save.highScore) {
-            this.save.highScore = this.levelScore;
-        }
-        this.saveSave();
-    }
-
-    // ================================================================================
-    // BOSS BATTLE
-    // ================================================================================
-    startBoss() {
-        this.state = GameState.BOSS;
-        this.enemies = [];
-        this.bullets = [];
-
-        const level = this.currentLevel;
-        this.boss = {
-            x: W / 2,
-            y: 120,
-            health: 20 + LEVELS.indexOf(level) * 10,
-            maxHealth: 20 + LEVELS.indexOf(level) * 10,
-            phase: 1,
-            pattern: 0,
-            timer: 60,
-            angle: 0,
-            flash: 0,
-            invincible: 60
-        };
-
-        this.texts.push({
-            x: W/2, y: H/2 - 50,
-            text: level.bossName,
-            color: level.color,
-            life: 120, vy: 0, size: 20
-        });
-    }
-
-    updateBoss() {
-        if (this.keysJustPressed['escape']) {
-            this.prevState = this.state;
-            this.state = GameState.PAUSED;
-            return;
-        }
-
-        const dt = this.deltaTime;
-        this.updatePlayer(dt);
-        this.updateBullets(dt);
-        this.updatePickups(dt);
-        this.updateParticles(dt);
-        this.texts = this.texts.filter(t => { t.y += t.vy * dt; t.life -= dt; return t.life > 0; });
-
-        const b = this.boss;
-        const p = this.player;
-
-        if (b.flash > 0) b.flash -= dt;
-        if (b.invincible > 0) b.invincible -= dt;
-
-        // Boss AI
-        b.timer -= dt;
-        b.angle += 0.02 * dt;
-
-        if (b.timer <= 0) {
-            b.pattern = (b.pattern + 1) % 4;
-            b.timer = 90;
-
-            // Attack patterns
-            switch (b.pattern) {
-                case 0: // Spiral
-                    for (let i = 0; i < 12; i++) {
-                        const angle = b.angle + (i / 12) * Math.PI * 2;
-                        this.bullets.push({
-                            x: b.x, y: b.y + 40,
-                            vx: Math.cos(angle) * 3,
-                            vy: Math.sin(angle) * 3,
-                            enemy: true, size: 8, life: 200,
-                            color: this.currentLevel.color
-                        });
-                    }
-                    break;
-                case 1: // Aimed burst
-                    const toPlayer = Math.atan2(p.y - b.y, p.x - b.x);
-                    for (let i = -2; i <= 2; i++) {
-                        this.bullets.push({
-                            x: b.x, y: b.y + 40,
-                            vx: Math.cos(toPlayer + i * 0.2) * 4,
-                            vy: Math.sin(toPlayer + i * 0.2) * 4,
-                            enemy: true, size: 10, life: 180,
-                            color: '#ff6666'
-                        });
-                    }
-                    break;
-                case 2: // Side sweep
-                    for (let i = 0; i < 8; i++) {
-                        setTimeout(() => {
-                            if (this.state === GameState.BOSS) {
-                                this.bullets.push({
-                                    x: b.x - 100 + i * 25, y: b.y + 50,
-                                    vx: 0, vy: 4,
-                                    enemy: true, size: 12, life: 200,
-                                    color: this.currentLevel.color
-                                });
-                            }
-                        }, i * 100);
-                    }
-                    b.timer = 150;
-                    break;
-                case 3: // Chase
-                    b.timer = 120;
-                    break;
-            }
-        }
-
-        // Boss movement
-        if (b.pattern === 3) {
-            // Chase player
-            const toPlayer = Math.atan2(p.y - b.y, p.x - b.x);
-            b.x += Math.cos(toPlayer) * 2 * dt;
-            b.y += Math.sin(toPlayer) * 1 * dt;
-            b.y = Math.min(b.y, 200);
-        } else {
-            // Sway side to side
-            b.x = W/2 + Math.sin(this.time * 0.02) * 150;
-            b.y = 100 + Math.sin(this.time * 0.03) * 30;
-        }
-
-        // Boss collision with player (contact damage)
-        if (p.invincible <= 0 && p.dashTimer <= 0) {
-            if (Math.hypot(p.x - b.x, p.y - b.y) < 60) {
-                this.hitPlayer();
-            }
-        }
-
-        // Player damages boss with dash
-        if (p.dashTimer > 0 && b.invincible <= 0) {
-            if (Math.hypot(p.x - b.x, p.y - b.y) < 70) {
-                this.damageBoss(1);
-            }
-        }
-    }
-
-    damageBoss(damage) {
-        const b = this.boss;
-        b.health -= damage;
-        b.flash = 15;
-        b.invincible = 30;
-        this.screenShake = 10;
-        audio.playBossHit();
-
-        // Particles
-        for (let i = 0; i < 12; i++) {
-            this.particles.push({
-                x: b.x + (Math.random() - 0.5) * 60,
-                y: b.y + (Math.random() - 0.5) * 60,
-                vx: (Math.random() - 0.5) * 8,
-                vy: (Math.random() - 0.5) * 8,
-                life: 30, color: this.currentLevel.color, size: 5
-            });
-        }
-
-        // Drop coins
-        for (let i = 0; i < 3; i++) {
-            this.pickups.push({
-                x: b.x + (Math.random() - 0.5) * 40,
-                y: b.y + 40 + Math.random() * 20,
-                type: 'coin', life: 600
-            });
-        }
-
-        if (b.health <= 0) {
-            this.defeatBoss();
-        }
-    }
-
-    defeatBoss() {
-        audio.playBossDeath();
-        this.screenShake = 30;
-        this.slowMo = 30;
-        this.flash = 1;
-        this.flashColor = this.currentLevel.color;
-
-        // Massive explosion
-        for (let i = 0; i < 50; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 6;
-            this.particles.push({
-                x: this.boss.x, y: this.boss.y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                life: 60, color: this.currentLevel.color, size: 4 + Math.random() * 6
-            });
-        }
-
-        // Lots of coins
-        for (let i = 0; i < 20; i++) {
-            setTimeout(() => {
-                if (this.pickups) {
-                    this.pickups.push({
-                        x: this.boss.x + (Math.random() - 0.5) * 100,
-                        y: this.boss.y + (Math.random() - 0.5) * 100,
-                        type: 'coin', life: 600
-                    });
-                }
-            }, i * 50);
-        }
-
-        setTimeout(() => {
-            this.levelScore += 2000;
-            this.save.coins += Math.floor(this.levelScore / 50);
-            if (!this.save.levelsCompleted.includes(this.currentLevel.id)) {
-                this.save.levelsCompleted.push(this.currentLevel.id);
-            }
-            // Unlock next level
-            const idx = LEVELS.indexOf(this.currentLevel);
-            if (idx < LEVELS.length - 1) {
-                LEVELS[idx + 1].unlocked = true;
-            }
-            if (this.levelScore > this.save.highScore) {
-                this.save.highScore = this.levelScore;
-            }
-            this.saveSave();
-
-            if (this.save.levelsCompleted.length >= 4) {
-                this.state = GameState.VICTORY;
-                audio.playVictory();
-            } else {
-                this.showCutscene([
-                    "SOURCE ACQUIRED!",
-                    `${this.currentLevel.name}`,
-                    `Score: ${this.levelScore}`,
-                    `Coins: +${Math.floor(this.levelScore / 50)}`,
-                    "Continue your quest..."
-                ], GameState.LEVEL_SELECT);
-            }
-        }, 1500);
-    }
-
-    // ================================================================================
-    // SHOP / UPGRADES
-    // ================================================================================
-    updateShop() {
-        const available = UPGRADES.filter(u => {
-            if (u.bought || this.save.upgrades.includes(u.id)) return false;
-            if (u.requires && !this.save.upgrades.includes(u.requires)) return false;
-            return true;
-        });
-
-        if (this.keysJustPressed['arrowup'] || this.keysJustPressed['w']) {
-            this.menuSelection = (this.menuSelection - 1 + available.length + 1) % (available.length + 1);
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['arrowdown'] || this.keysJustPressed['s']) {
-            this.menuSelection = (this.menuSelection + 1) % (available.length + 1);
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['escape']) {
-            this.state = GameState.TITLE;
-            this.menuSelection = 1;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            if (this.menuSelection === available.length) {
-                // Back
-                this.state = GameState.TITLE;
-                this.menuSelection = 1;
-                audio.playSelect();
-            } else {
-                const up = available[this.menuSelection];
-                if (this.save.coins >= up.cost) {
-                    this.save.coins -= up.cost;
-                    this.save.upgrades.push(up.id);
-                    this.saveSave();
-                    this.applyUpgrades();
-                    audio.playPowerup();
-                }
-            }
-        }
-    }
-
-    drawShop() {
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        ctx.fillStyle = '#feca57';
-        ctx.font = '20px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('UPGRADES', W/2, 50);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText(`COINS: ${this.save.coins}`, W/2, 80);
-
-        const available = UPGRADES.filter(u => {
-            if (this.save.upgrades.includes(u.id)) return false;
-            if (u.requires && !this.save.upgrades.includes(u.requires)) return false;
-            return true;
-        });
-
-        available.forEach((up, i) => {
-            const y = 130 + i * 60;
-            const selected = i === this.menuSelection;
-            const canAfford = this.save.coins >= up.cost;
-
-            ctx.fillStyle = selected ? '#2a2a4a' : '#1a1a2a';
-            ctx.fillRect(100, y - 20, W - 200, 50);
-
-            if (selected) {
-                ctx.strokeStyle = '#feca57';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(100, y - 20, W - 200, 50);
-            }
-
-            ctx.fillStyle = canAfford ? '#fff' : '#666';
-            ctx.font = '12px "Press Start 2P"';
-            ctx.textAlign = 'left';
-            ctx.fillText(up.name, 120, y);
-
-            ctx.fillStyle = '#888';
-            ctx.font = '8px "Press Start 2P"';
-            ctx.fillText(up.desc, 120, y + 18);
-
-            ctx.fillStyle = canAfford ? '#feca57' : '#663';
-            ctx.textAlign = 'right';
-            ctx.font = '10px "Press Start 2P"';
-            ctx.fillText(`${up.cost}`, W - 120, y + 5);
-        });
-
-        // Purchased upgrades
-        ctx.fillStyle = '#444';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('OWNED:', W/2, H - 100);
-        ctx.fillStyle = '#2ecc71';
-        ctx.font = '8px "Press Start 2P"';
-        const owned = this.save.upgrades.map(id => UPGRADES.find(u => u.id === id)?.name || id).join(', ') || 'None';
-        ctx.fillText(owned, W/2, H - 80);
-
-        // Back button
-        const backY = 130 + available.length * 60;
-        const backSelected = this.menuSelection === available.length;
-        ctx.fillStyle = backSelected ? '#feca57' : '#666';
-        ctx.font = '14px "Press Start 2P"';
-        ctx.fillText('← BACK', W/2, backY);
-    }
-
-    // ================================================================================
-    // CUTSCENES
-    // ================================================================================
-    showCutscene(lines, nextState) {
-        this.cutsceneText = lines;
-        this.cutsceneIndex = 0;
-        this.typewriterText = '';
-        this.typewriterTarget = lines[0];
-        this.typewriterTimer = 0;
-        this.cutsceneNextState = nextState;
-        this.state = GameState.CUTSCENE;
-    }
-
-    updateCutscene() {
-        // Typewriter effect
-        if (this.typewriterText.length < this.typewriterTarget.length) {
-            this.typewriterTimer++;
-            if (this.typewriterTimer >= 2) {
-                this.typewriterTimer = 0;
-                this.typewriterText = this.typewriterTarget.substring(0, this.typewriterText.length + 1);
-                audio.playText();
-            }
-        }
-
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            if (this.typewriterText.length < this.typewriterTarget.length) {
-                this.typewriterText = this.typewriterTarget;
-            } else {
-                this.cutsceneIndex++;
-                if (this.cutsceneIndex >= this.cutsceneText.length) {
-                    this.state = this.cutsceneNextState;
-                    this.menuSelection = 0;
-                } else {
-                    this.typewriterTarget = this.cutsceneText[this.cutsceneIndex];
-                    this.typewriterText = '';
-                }
-            }
-            audio.playConfirm();
-        }
-    }
-
-    drawCutscene() {
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        // Text box
-        ctx.fillStyle = '#1a1a3a';
-        ctx.fillRect(50, H/2 - 60, W - 100, 120);
-        ctx.strokeStyle = '#feca57';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(50, H/2 - 60, W - 100, 120);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = '14px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.typewriterText, W/2, H/2);
-
-        ctx.fillStyle = '#666';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText(`${this.cutsceneIndex + 1}/${this.cutsceneText.length}`, W/2, H/2 + 80);
-
-        if (this.typewriterText.length === this.typewriterTarget.length) {
-            ctx.fillStyle = '#feca57';
-            ctx.fillText('PRESS ENTER', W/2, H/2 + 40);
-        }
-    }
-
-    // ================================================================================
-    // PAUSE MENU
-    // ================================================================================
-    updatePaused() {
-        if (this.keysJustPressed['escape']) {
-            this.state = this.prevState;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['arrowup'] || this.keysJustPressed['w']) {
-            this.menuSelection = (this.menuSelection + 2) % 3;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['arrowdown'] || this.keysJustPressed['s']) {
-            this.menuSelection = (this.menuSelection + 1) % 3;
-            audio.playSelect();
-        }
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            switch (this.menuSelection) {
-                case 0: this.state = this.prevState; break;
-                case 1:
-                    audio.enabled = !audio.enabled;
-                    break;
-                case 2:
-                    this.state = GameState.TITLE;
-                    this.menuSelection = 0;
-                    break;
-            }
-            audio.playConfirm();
-        }
-    }
-
-    drawPaused() {
-        // Dim background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(0, 0, W, H);
-
-        ctx.fillStyle = '#feca57';
-        ctx.font = '24px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('PAUSED', W/2, 200);
-
-        const items = ['RESUME', `SOUND: ${audio.enabled ? 'ON' : 'OFF'}`, 'QUIT TO MENU'];
-        items.forEach((item, i) => {
-            const y = 280 + i * 50;
-            ctx.fillStyle = i === this.menuSelection ? '#fff' : '#666';
-            ctx.font = '14px "Press Start 2P"';
-            ctx.fillText(item, W/2, y);
-        });
-    }
-
-    // ================================================================================
-    // GAME OVER
-    // ================================================================================
-    updateGameOver() {
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            this.state = GameState.LEVEL_SELECT;
-            this.menuSelection = LEVELS.indexOf(this.currentLevel);
-            audio.playConfirm();
-        }
-    }
-
-    drawGameOver() {
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        ctx.fillStyle = '#e74c3c';
-        ctx.font = '32px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', W/2, 200);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px "Press Start 2P"';
-        ctx.fillText(`SCORE: ${this.levelScore}`, W/2, 280);
-
-        ctx.fillStyle = '#feca57';
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText(`COINS EARNED: ${Math.floor(this.levelScore / 100)}`, W/2, 320);
-
-        ctx.fillStyle = '#888';
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText(`HIGH SCORE: ${this.save.highScore}`, W/2, 360);
-
-        ctx.fillStyle = '#666';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText('PRESS ENTER TO CONTINUE', W/2, 450);
-    }
-
-    // ================================================================================
-    // VICTORY
-    // ================================================================================
-    updateVictory() {
-        if (this.keysJustPressed['enter'] || this.keysJustPressed[' ']) {
-            this.state = GameState.TITLE;
-            this.menuSelection = 0;
-        }
-    }
-
-    drawVictory() {
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, W, H);
-
-        const colors = ['#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = colors[Math.floor(this.time / 30) % 4];
-
-        ctx.fillStyle = '#feca57';
-        ctx.font = '24px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('TORAH RESTORED!', W/2, 150);
-
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText('You have collected all four', W/2, 220);
-        ctx.fillText('Documentary Hypothesis sources!', W/2, 250);
-
-        // Show all sources
-        ['J', 'E', 'D', 'P'].forEach((letter, i) => {
-            ctx.fillStyle = colors[i];
-            ctx.font = '32px "Press Start 2P"';
-            ctx.fillText(letter, 250 + i * 80, 340);
-        });
-
-        ctx.fillStyle = '#888';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText('The mystery of the Torah\'s', W/2, 420);
-        ctx.fillText('composition has been solved!', W/2, 445);
-
-        ctx.fillStyle = '#feca57';
-        ctx.fillText(`FINAL SCORE: ${this.save.highScore}`, W/2, 500);
-
-        ctx.fillStyle = '#666';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.fillText('PRESS ENTER', W/2, 550);
-    }
-
-    // ================================================================================
-    // MAIN DRAW
-    // ================================================================================
-    draw() {
-        ctx.save();
-
-        // Screen shake
-        if (this.screenShake > 0) {
-            ctx.translate(
-                (Math.random() - 0.5) * this.screenShake * 2,
-                (Math.random() - 0.5) * this.screenShake * 2
-            );
-        }
-
-        switch (this.state) {
-            case GameState.TITLE: this.drawTitle(); break;
-            case GameState.LEVEL_SELECT: this.drawLevelSelect(); break;
-            case GameState.PLAYING: this.drawPlaying(); break;
-            case GameState.BOSS: this.drawBoss(); break;
-            case GameState.SHOP: this.drawShop(); break;
-            case GameState.CUTSCENE: this.drawCutscene(); break;
-            case GameState.PAUSED:
-                if (this.prevState === GameState.PLAYING) this.drawPlaying();
-                else if (this.prevState === GameState.BOSS) this.drawBoss();
-                this.drawPaused();
-                break;
-            case GameState.GAME_OVER: this.drawGameOver(); break;
-            case GameState.VICTORY: this.drawVictory(); break;
-        }
-
-        // Flash effect
-        if (this.flash > 0) {
-            ctx.fillStyle = this.flashColor;
-            ctx.globalAlpha = this.flash * 0.5;
-            ctx.fillRect(0, 0, W, H);
-            ctx.globalAlpha = 1;
-        }
-
-        ctx.restore();
-    }
-
-    drawPlaying() {
-        const level = this.currentLevel;
-
-        // Background
-        ctx.fillStyle = level.bgColor;
-        ctx.fillRect(0, 0, W, H);
-
-        // Grid
-        ctx.strokeStyle = level.darkColor + '40';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < W; x += 40) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-        }
-        for (let y = 0; y < H; y += 40) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-        }
-
-        // Source scroll fragments
-        if (this.scrolls) {
-            const level = this.currentLevel;
-            this.scrolls.forEach((scroll, idx) => {
-                if (scroll.collected || !scroll.visible) return;
-
-                const bob = Math.sin(scroll.pulse) * 5;
-                const glow = Math.sin(scroll.pulse * 2) * 0.3 + 0.7;
-                const x = scroll.x, y = scroll.y + bob;
-
-                // Pulsing glow ring
-                ctx.strokeStyle = level.color;
-                ctx.lineWidth = 2;
-                ctx.globalAlpha = 0.3 + glow * 0.3;
-                ctx.beginPath();
-                ctx.arc(x, y, 28 + Math.sin(scroll.pulse) * 4, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.globalAlpha = 1;
-
-                // Outer glow
-                ctx.shadowColor = level.color;
-                ctx.shadowBlur = 20 * glow;
-
-                // Scroll parchment body
-                ctx.fillStyle = '#f5e6c8';
-                ctx.beginPath();
-                ctx.roundRect(x - 22, y - 14, 44, 28, 4);
-                ctx.fill();
-
-                // Scroll rollers (colored ends)
-                ctx.fillStyle = level.color;
-                ctx.beginPath();
-                ctx.arc(x - 20, y, 10, 0, Math.PI * 2);
-                ctx.arc(x + 20, y, 10, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.shadowBlur = 0;
-
-                // Source letter
-                ctx.fillStyle = level.darkColor;
-                ctx.font = 'bold 16px "Press Start 2P"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(level.id.toUpperCase(), x, y + 2);
-                ctx.textBaseline = 'alphabetic';
-
-                // Fragment number
-                ctx.fillStyle = '#fff';
-                ctx.font = '6px "Press Start 2P"';
-                ctx.fillText(`${idx + 1}`, x, y - 20);
-
-                // Sparkle particles
-                if (Math.random() < 0.1) {
-                    this.particles.push({
-                        x: x + (Math.random() - 0.5) * 40,
-                        y: y + (Math.random() - 0.5) * 30,
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: -1 - Math.random(),
-                        life: 25, color: level.color, size: 3
-                    });
-                }
-            });
-        }
-
-        // Pickups
-        this.pickups.forEach(pk => {
-            const bob = Math.sin(this.time * 0.1 + pk.x) * 3;
-            ctx.fillStyle = pk.type === 'coin' ? '#feca57' : (pk.type === 'health' ? '#e74c3c' : '#9b59b6');
+    ctx.strokeStyle = src.color + '33';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, 796, 596);
+}
+
+function drawEnemies() {
+    const t = Date.now() / 200;
+    for (const e of levelEnemies) {
+        const segments = 5;
+        const segW = e.w / segments;
+        for (let i = 0; i < segments; i++) {
+            const sy = Math.sin(t + i * 0.8) * 3;
+            const segX = e.x + i * segW;
+            const segY = e.y + sy;
+
+            ctx.fillStyle = i === 0 ? '#FF3333' : (i % 2 === 0 ? '#CC2222' : '#AA1111');
             ctx.beginPath();
-            ctx.arc(pk.x, pk.y + bob, pk.type === 'coin' ? 8 : 10, 0, Math.PI * 2);
+            ctx.arc(segX + segW/2, segY + 8, segW/2 + 2, 0, Math.PI * 2);
             ctx.fill();
-
-            if (pk.type !== 'coin') {
-                ctx.fillStyle = '#fff';
-                ctx.font = '10px "Press Start 2P"';
-                ctx.textAlign = 'center';
-                ctx.fillText(pk.type === 'health' ? '+' : '★', pk.x, pk.y + bob + 4);
-            }
-        });
-
-        // Bullets
-        this.bullets.forEach(b => {
-            ctx.fillStyle = b.color;
-            ctx.shadowColor = b.color;
-            ctx.shadowBlur = 10;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-        });
-
-        // Enemies
-        this.enemies.forEach(e => {
-            ctx.fillStyle = e.flash > 0 ? '#fff' : (e.type === 'bomber' ? '#ff6644' : (e.type === 'shooter' ? '#6644ff' : '#ff4444'));
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eyes
-            const eyeAngle = Math.atan2(this.player.y - e.y, this.player.x - e.x);
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(e.x + Math.cos(eyeAngle - 0.3) * e.size * 0.4, e.y + Math.sin(eyeAngle - 0.3) * e.size * 0.4, 4, 0, Math.PI * 2);
-            ctx.arc(e.x + Math.cos(eyeAngle + 0.3) * e.size * 0.4, e.y + Math.sin(eyeAngle + 0.3) * e.size * 0.4, 4, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(e.x + Math.cos(eyeAngle - 0.3) * e.size * 0.5, e.y + Math.sin(eyeAngle - 0.3) * e.size * 0.5, 2, 0, Math.PI * 2);
-            ctx.arc(e.x + Math.cos(eyeAngle + 0.3) * e.size * 0.5, e.y + Math.sin(eyeAngle + 0.3) * e.size * 0.5, 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Health bar
-            if (e.maxHealth > 1) {
-                ctx.fillStyle = '#333';
-                ctx.fillRect(e.x - 15, e.y - e.size - 10, 30, 4);
-                ctx.fillStyle = '#2ecc71';
-                ctx.fillRect(e.x - 15, e.y - e.size - 10, 30 * (e.health / e.maxHealth), 4);
-            }
-        });
-
-        // Particles
-        this.particles.forEach(p => {
-            ctx.globalAlpha = p.life / 30;
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
-        });
-        ctx.globalAlpha = 1;
-
-        // Player trail
-        this.player.trail.forEach(t => {
-            ctx.globalAlpha = t.alpha * 0.5;
-            const sprite = getSprite(`detective.${this.player.frame}`);
-            ctx.drawImage(sprite, t.x - sprite.width/2, t.y - sprite.height/2);
-        });
-        ctx.globalAlpha = 1;
-
-        // Player
-        const p = this.player;
-        const flash = p.invincible > 0 && Math.floor(p.invincible / 4) % 2 === 0;
-        if (!flash) {
-            if (p.invincible > 0) {
-                ctx.shadowColor = '#9b59b6';
-                ctx.shadowBlur = 15;
-            }
-            const sprite = getSprite(`detective.${p.frame}`);
-            ctx.drawImage(sprite, p.x - sprite.width/2, p.y - sprite.height/2);
-            ctx.shadowBlur = 0;
         }
-
-        // Floating texts
-        this.texts.forEach(t => {
-            ctx.globalAlpha = Math.min(1, t.life / 20);
-            ctx.fillStyle = t.color;
-            ctx.font = `${t.size || 12}px "Press Start 2P"`;
-            ctx.textAlign = 'center';
-            ctx.fillText(t.text, t.x, t.y);
-        });
-        ctx.globalAlpha = 1;
-
-        // HUD
-        this.drawHUD();
-    }
-
-    drawBoss() {
-        this.drawPlaying(); // Draw normal game stuff
-
-        const b = this.boss;
-        const level = this.currentLevel;
-
-        // Boss
-        ctx.fillStyle = b.flash > 0 ? '#fff' : level.color;
-        ctx.shadowColor = level.color;
-        ctx.shadowBlur = 20;
+        const headX = e.speed > 0 ? e.x + e.w - segW : e.x;
+        const headSy = Math.sin(t) * 3;
+        ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 50, 0, Math.PI * 2);
+        ctx.arc(headX + segW/2 - 3, e.y + headSy + 5, 3, 0, Math.PI * 2);
+        ctx.arc(headX + segW/2 + 3, e.y + headSy + 5, 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Boss face
-        ctx.fillStyle = level.darkColor;
+        ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(b.x - 15, b.y - 10, 8, 0, Math.PI * 2);
-        ctx.arc(b.x + 15, b.y - 10, 8, 0, Math.PI * 2);
+        ctx.arc(headX + segW/2 - 3 + (e.speed > 0 ? 1 : -1), e.y + headSy + 5, 1.5, 0, Math.PI * 2);
+        ctx.arc(headX + segW/2 + 3 + (e.speed > 0 ? 1 : -1), e.y + headSy + 5, 1.5, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(b.x - 15, b.y - 10, 4, 0, Math.PI * 2);
-        ctx.arc(b.x + 15, b.y - 10, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Boss health bar
-        ctx.fillStyle = '#333';
-        ctx.fillRect(W/2 - 150, 20, 300, 20);
-        ctx.fillStyle = level.color;
-        ctx.fillRect(W/2 - 150, 20, 300 * (b.health / b.maxHealth), 20);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(W/2 - 150, 20, 300, 20);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = '8px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText(level.bossName, W/2, 55);
-    }
-
-    drawHUD() {
-        const p = this.player;
-        const level = this.currentLevel;
-
-        // Health
-        ctx.fillStyle = '#e74c3c';
-        ctx.font = '16px "Press Start 2P"';
-        ctx.textAlign = 'left';
-        let hearts = '';
-        for (let i = 0; i < p.maxHealth; i++) {
-            hearts += i < p.health ? '♥' : '♡';
-        }
-        ctx.fillText(hearts, 15, 30);
-
-        // Score
-        ctx.fillStyle = '#feca57';
-        ctx.textAlign = 'right';
-        ctx.fillText(`${this.levelScore}`, W - 15, 30);
-
-        // Scroll collection progress
-        ctx.fillStyle = level.color;
-        ctx.textAlign = 'center';
-        ctx.font = '10px "Press Start 2P"';
-        if (this.scrolls) {
-            const collected = this.scrollsCollected || 0;
-            const total = this.scrollsTotal || 0;
-            ctx.fillText(`${level.id.toUpperCase()} SCROLLS: ${collected}/${total}`, W/2, 25);
-            // Scroll bar
-            ctx.fillStyle = '#333';
-            ctx.fillRect(W/2 - 60, 32, 120, 8);
-            ctx.fillStyle = level.color;
-            ctx.fillRect(W/2 - 60, 32, 120 * (collected / Math.max(1, total)), 8);
-            ctx.strokeStyle = level.color + '80';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(W/2 - 60, 32, 120, 8);
-        }
-
-        // Wave counter (smaller, below scroll bar)
-        ctx.fillStyle = '#666';
-        ctx.font = '8px "Press Start 2P"';
-        if (this.state === GameState.PLAYING) {
-            ctx.fillText(`WAVE ${this.wave}`, W/2, 52);
-        }
-
-        // Combo
-        if (p.combo > 1) {
-            ctx.fillStyle = '#feca57';
-            ctx.font = '12px "Press Start 2P"';
-            ctx.fillText(`${p.combo}x`, W - 15, 55);
-        }
-
-        // Arrow pointing to nearest uncollected scroll
-        if (this.scrolls) {
-            const nearest = this.scrolls.filter(s => !s.collected && s.visible)
-                .sort((a, b) => Math.hypot(p.x - a.x, p.y - a.y) - Math.hypot(p.x - b.x, p.y - b.y))[0];
-            if (nearest) {
-                const dist = Math.hypot(p.x - nearest.x, p.y - nearest.y);
-                if (dist > 80) {
-                    const angle = Math.atan2(nearest.y - p.y, nearest.x - p.x);
-                    const arrowDist = 45;
-                    const ax = p.x + Math.cos(angle) * arrowDist;
-                    const ay = p.y + Math.sin(angle) * arrowDist;
-
-                    ctx.save();
-                    ctx.translate(ax, ay);
-                    ctx.rotate(angle);
-                    ctx.fillStyle = level.color;
-                    ctx.globalAlpha = 0.6 + Math.sin(this.time * 0.15) * 0.3;
-                    ctx.beginPath();
-                    ctx.moveTo(10, 0);
-                    ctx.lineTo(-5, -6);
-                    ctx.lineTo(-5, 6);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                    ctx.restore();
-                }
-            }
-        }
-
-        // Dash meter
-        if (p.dashCooldown > 0) {
-            ctx.fillStyle = '#333';
-            ctx.fillRect(15, H - 25, 80, 10);
-            ctx.fillStyle = '#feca57';
-            ctx.fillRect(15, H - 25, 80 * (1 - p.dashCooldown / this.baseStats.dashCooldown), 10);
-        } else {
-            ctx.fillStyle = '#feca57';
-            ctx.font = '8px "Press Start 2P"';
-            ctx.textAlign = 'left';
-            ctx.fillText('DASH', 15, H - 17);
-        }
-
-        // Coins
-        ctx.fillStyle = '#feca57';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.textAlign = 'right';
-        ctx.fillText(`💰${this.save.coins}`, W - 15, H - 17);
     }
 }
 
-// ================================================================================
-// START GAME
-// ================================================================================
-const game = new Game();
+function drawScroll() {
+    const sc = levelData.scrollPos;
+    const src = SOURCES[currentLevel];
+    const bob = Math.sin(scrollBob) * 6;
+    const sx = sc.x;
+    const sy = sc.y + bob;
+
+    ctx.globalAlpha = 0.3 + Math.sin(scrollBob * 2) * 0.15;
+    ctx.fillStyle = src.color;
+    ctx.beginPath();
+    ctx.arc(sx + 20, sy + 25, 35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = '#F5DEB3';
+    ctx.fillRect(sx + 5, sy + 8, 30, 34);
+
+    ctx.fillStyle = '#8B6914';
+    ctx.beginPath(); ctx.arc(sx + 8, sy + 8, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 32, sy + 8, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 8, sy + 42, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 32, sy + 42, 6, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = src.color;
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(src.key, sx + 20, sy + 35);
+    ctx.textAlign = 'left';
+
+    if (player) {
+        const dx = sx + 20 - (player.x + PLAYER_W/2);
+        const dy = sy + 25 - (player.y + PLAYER_H/2);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist > 120) {
+            const angle = Math.atan2(dy, dx);
+            const arrowX = player.x + PLAYER_W/2 + Math.cos(angle) * 50;
+            const arrowY = player.y + PLAYER_H/2 + Math.sin(angle) * 50;
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = src.color;
+            ctx.save();
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(10, 0); ctx.lineTo(-5, -6); ctx.lineTo(-5, 6);
+            ctx.closePath(); ctx.fill();
+            ctx.restore();
+            ctx.globalAlpha = 1;
+        }
+    }
+}
+
+function drawPlayer() {
+    const P = player;
+    if (invincibleTimer > 0 && Math.floor(invincibleTimer / 4) % 2 === 0) return;
+
+    const img = spriteImages[P.facing] || spriteImages.south;
+    if (img && img.complete) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, P.x - 6, P.y - 3, PLAYER_W + 12, PLAYER_H + 6);
+    } else {
+        ctx.fillStyle = '#FF8800';
+        ctx.fillRect(P.x, P.y, P.w, P.h);
+    }
+}
+
+function drawHUD() {
+    const src = SOURCES[currentLevel];
+
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, 800, 36);
+
+    ctx.fillStyle = src.color;
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Level ' + (currentLevel + 1) + ': ' + src.name, 10, 24);
+
+    ctx.fillStyle = '#FF6666';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'right';
+    let livesStr = '';
+    for (let i = 0; i < lives; i++) livesStr += '\u2764 ';
+    ctx.fillText(livesStr, 790, 24);
+
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText('Score: ' + score, 400, 24);
+
+    ctx.textAlign = 'left';
+    for (let i = 0; i < 4; i++) {
+        const bx = 560 + i * 28;
+        ctx.fillStyle = sourcesCollected[i] ? SOURCES[i].color : '#333';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(SOURCES[i].key, bx, 24);
+    }
+    ctx.textAlign = 'left';
+}
+
+function drawLevelComplete() {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, 800, 600);
+
+    const src = SOURCES[currentLevel];
+    ctx.textAlign = 'center';
+    ctx.fillStyle = src.color;
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText(src.key + ' SOURCE FOUND!', 400, 240);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '18px monospace';
+    ctx.fillText(src.desc, 400, 290);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '16px monospace';
+    if (currentLevel < 3) {
+        ctx.fillText('Next: ' + SOURCES[currentLevel + 1].name, 400, 340);
+    } else {
+        ctx.fillText('All sources collected!', 400, 340);
+    }
+    ctx.textAlign = 'left';
+}
+
+function drawGameOver() {
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, 800, 600);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FF4444';
+    ctx.font = 'bold 48px monospace';
+    ctx.fillText('GAME OVER', 400, 250);
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = '24px monospace';
+    ctx.fillText('Score: ' + score, 400, 310);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '14px monospace';
+    ctx.fillText('Sources found: ' + sourcesCollected.filter(Boolean).length + ' / 4', 400, 350);
+
+    if (gameOverTimer <= 0) {
+        if (Math.sin(Date.now() / 300) > 0) {
+            ctx.fillStyle = '#FFF';
+            ctx.font = '18px monospace';
+            ctx.fillText('PRESS SPACE TO CONTINUE', 400, 420);
+        }
+    }
+    ctx.textAlign = 'left';
+}
+
+function drawVictory() {
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, 800, 600);
+    drawParticles();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 40px monospace';
+    ctx.fillText('TORAH RECONSTRUCTED!', 400, 140);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '18px monospace';
+    ctx.fillText('The Biblical Detective has uncovered all four sources', 400, 190);
+    ctx.fillText('of the Documentary Hypothesis!', 400, 215);
+
+    SOURCES.forEach((s, i) => {
+        const bx = 100 + i * 170;
+        ctx.fillStyle = s.color;
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(s.key, bx, 290);
+        ctx.font = '12px monospace';
+        ctx.fillText(s.name, bx, 312);
+    });
+
+    if (spriteImages.south && spriteImages.south.complete) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(spriteImages.south, 364, 340, 72, 72);
+    }
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = '24px monospace';
+    ctx.fillText('Final Score: ' + score, 400, 460);
+
+    if (victoryTimer <= 0) {
+        if (Math.sin(Date.now() / 300) > 0) {
+            ctx.fillStyle = '#FFF';
+            ctx.font = '18px monospace';
+            ctx.fillText('PRESS SPACE TO PLAY AGAIN', 400, 520);
+        }
+    }
+    ctx.textAlign = 'left';
+}
+
+// --- GAME LOOP ---
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 </script>
 </body>
 </html>
