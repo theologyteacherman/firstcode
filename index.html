@@ -330,7 +330,8 @@ function rectOverlap(a, b) {
 function isOnLadder(px, py, pw) {
     const cx = px + pw/2;
     for (const L of levelData.ladders) {
-        if (cx > L.x && cx < L.x + 28 && py + PLAYER_H > L.y && py < L.y + L.h) return true;
+        // Extend detection 20px above ladder top so player can climb onto the platform
+        if (cx > L.x && cx < L.x + 28 && py + PLAYER_H >= L.y - 20 && py < L.y + L.h) return true;
     }
     return false;
 }
@@ -707,7 +708,9 @@ function drawPlayer() {
     const img = spriteImages[P.facing] || spriteImages.south;
     if (img && img.complete) {
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, P.x - 6, P.y - 3, PLAYER_W + 12, PLAYER_H + 6);
+        const dx = Math.round(P.x - 6);
+        const dy = Math.round(P.y - 3);
+        ctx.drawImage(img, dx, dy, PLAYER_W + 12, PLAYER_H + 6);
     } else {
         ctx.fillStyle = '#FF8800';
         ctx.fillRect(P.x, P.y, P.w, P.h);
