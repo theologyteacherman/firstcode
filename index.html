@@ -367,20 +367,19 @@ function update() {
 
     if (gameState === 'intro') {
         introTimer++;
-        // Phases: 0=oh no, 1=scholars identified, 2=you must find, 3=show sources, 4=go!
-        if (introTimer < 120) introPhase = 0;
-        else if (introTimer < 240) introPhase = 1;
-        else if (introTimer < 360) introPhase = 2;
-        else if (introTimer < 480) introPhase = 3;
-        else {
-            gameState = 'playing';
-            initLevel(0);
-        }
-        // Allow skipping with Space after first phase
-        if (introTimer > 60 && (keys['Space'] || keys['Enter'])) {
+        // Each phase animates in, then waits for key press to advance
+        const phaseDone = (introPhase === 0 && introTimer >= 80) ||
+                          (introPhase === 1 && introTimer >= 50) ||
+                          (introPhase === 2 && introTimer >= 100) ||
+                          (introPhase === 3 && introTimer >= 60);
+        if (phaseDone && (keys['Space'] || keys['Enter'])) {
             keys['Space'] = false; keys['Enter'] = false;
-            gameState = 'playing';
-            initLevel(0);
+            introPhase++;
+            introTimer = 0;
+            if (introPhase > 3) {
+                gameState = 'playing';
+                initLevel(0);
+            }
         }
         return;
     }
@@ -628,40 +627,42 @@ function drawIntro() {
     ctx.textAlign = 'center';
     const t = introTimer;
 
-    // Phase 0: "Oh no!" with shaking Torah
-    if (introPhase >= 0) {
+    if (introPhase === 0) {
+        // "Oh no! The Torah has been deconstructed!"
         const alpha0 = Math.min(1, t / 30);
         ctx.globalAlpha = alpha0;
         ctx.fillStyle = '#FF4444';
         ctx.font = 'bold 44px monospace';
-        const shake = introPhase === 0 ? Math.sin(t * 0.5) * 3 : 0;
-        ctx.fillText('Oh no!', 450 + shake, 120);
+        const shake = Math.sin(t * 0.5) * 3;
+        ctx.fillText('Oh no!', 450 + shake, 280);
 
         if (t > 30) {
             const alpha1 = Math.min(1, (t - 30) / 40);
             ctx.globalAlpha = alpha1;
             ctx.fillStyle = '#FFFFFF';
             ctx.font = '20px monospace';
-            ctx.fillText('The Torah \u2014 the first five books of', 450, 180);
-            ctx.fillText('the Bible \u2014 has been deconstructed!', 450, 210);
+            ctx.fillText('The Torah \u2014 the first five books of', 450, 360);
+            ctx.fillText('the Bible \u2014 has been deconstructed!', 450, 390);
         }
-    }
 
-    // Phase 1: Scholars identified sources
-    if (introPhase >= 1) {
-        const alpha = Math.min(1, (t - 120) / 40);
+        if (t >= 80) drawContinuePrompt();
+    }
+    else if (introPhase === 1) {
+        // "Biblical scholars have identified four original sources"
+        const alpha = Math.min(1, t / 40);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = '#FFD700';
-        ctx.font = '18px monospace';
-        ctx.fillText('Biblical scholars have identified', 450, 290);
-        ctx.fillText('four original sources:', 450, 320);
-    }
+        ctx.font = '20px monospace';
+        ctx.fillText('Biblical scholars have identified', 450, 340);
+        ctx.fillText('four original sources:', 450, 375);
 
-    // Phase 2: Show the four sources
-    if (introPhase >= 2) {
+        if (t >= 50) drawContinuePrompt();
+    }
+    else if (introPhase === 2) {
+        // Show the four sources one by one
         SOURCES.forEach((s, i) => {
             const delay = i * 20;
-            const elapsed = t - 240 - delay;
+            const elapsed = t - delay;
             if (elapsed > 0) {
                 const alpha = Math.min(1, elapsed / 30);
                 const slide = Math.max(0, 20 - elapsed);
@@ -669,41 +670,54 @@ function drawIntro() {
                 ctx.fillStyle = s.color;
                 ctx.font = 'bold 22px monospace';
                 const bx = 130 + i * 170;
-                ctx.fillText(s.key + ' Source', bx, 400 + slide);
+                ctx.fillText(s.key + ' Source', bx, 280 + slide);
                 ctx.fillStyle = '#888';
                 ctx.font = '11px monospace';
                 const words = s.desc.split(', ');
                 words.forEach((w, j) => {
-                    ctx.fillText(w, bx, 422 + j * 15 + slide);
+                    ctx.fillText(w, bx, 302 + j * 15 + slide);
                 });
             }
         });
-    }
 
-    // Phase 3: Your mission
-    if (introPhase >= 3) {
-        const alpha = Math.min(1, (t - 360) / 40);
+        if (t >= 100) drawContinuePrompt();
+    }
+    else if (introPhase === 3) {
+        // "You must find all four sources to reconstruct the Torah!"
+        const alpha = Math.min(1, t / 40);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 22px monospace';
-        ctx.fillText('You must find all four sources', 450, 550);
-        ctx.fillText('to reconstruct the Torah!', 450, 580);
+        ctx.fillText('You must find all four sources', 450, 300);
+        ctx.fillText('to reconstruct the Torah!', 450, 335);
 
-        if (spriteImages.south && spriteImages.south.complete) {
+        if (t > 20 && spriteImages.south && spriteImages.south.complete) {
+            ctx.globalAlpha = Math.min(1, (t - 20) / 30);
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(spriteImages.south, 414, 630, 72, 72);
+            ctx.drawImage(spriteImages.south, 414, 400, 72, 72);
         }
 
-        if (t > 400 && Math.sin(t * 0.08) > 0) {
+        if (t >= 60) {
             ctx.globalAlpha = 1;
-            ctx.fillStyle = '#888';
-            ctx.font = '14px monospace';
-            ctx.fillText('Press SPACE to begin', 450, 750);
+            if (Math.sin(Date.now() / 300) > 0) {
+                ctx.fillStyle = '#888';
+                ctx.font = '14px monospace';
+                ctx.fillText('Press SPACE to begin', 450, 750);
+            }
         }
     }
 
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
+}
+
+function drawContinuePrompt() {
+    if (Math.sin(Date.now() / 300) > 0) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#888';
+        ctx.font = '14px monospace';
+        ctx.fillText('Press SPACE to continue', 450, 750);
+    }
 }
 
 function drawLevel() {
