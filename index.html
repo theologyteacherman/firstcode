@@ -89,6 +89,18 @@ function playSound(type) {
     }
 }
 
+// --- DEATH SOUND CLIPS ---
+const deathClips = ['hey!.mp3', 'notnice!.mp3', 'ow!.mp3', 'yougotme.mp3'].map(src => {
+    const a = new Audio(src);
+    a.preload = 'auto';
+    return a;
+});
+function playDeathClip() {
+    const clip = deathClips[Math.floor(Math.random() * deathClips.length)];
+    clip.currentTime = 0;
+    clip.play().catch(() => {});
+}
+
 // --- LOAD IMAGES ---
 const spriteImages = {};
 let spritesLoaded = 0;
@@ -558,7 +570,7 @@ function update() {
 
 function loseLife() {
     deaths++;
-    playSound('hurt');
+    playDeathClip();
     spawnParticles(player.x + PLAYER_W/2, player.y + PLAYER_H/2, '#FF4444', 20);
     player.x = levelData.playerStart.x;
     player.y = levelData.playerStart.y;
