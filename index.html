@@ -12,6 +12,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
+<video id="jedpVideo" src="JEDP.mp4" preload="auto" muted playsinline style="display:none;"></video>
 <script>
 // ============================================================
 // BIBLICAL DETECTIVE - A Donkey Kong-Style Platformer
@@ -22,6 +23,11 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 canvas.width = 900;
 canvas.height = 800;
+
+// --- JEDP VIDEO ---
+const jedpVideo = document.getElementById('jedpVideo');
+let videoEnded = false;
+jedpVideo.addEventListener('ended', () => { videoEnded = true; });
 
 // --- SPRITES (actual user-provided orange cat detective) ---
 const SPRITES = {
@@ -392,6 +398,9 @@ function update() {
             if (currentLevel >= 4) {
                 gameState = 'victory';
                 victoryTimer = 300;
+                videoEnded = false;
+                jedpVideo.currentTime = 0;
+                jedpVideo.play().catch(() => {});
                 playSound('win');
             } else {
                 gameState = 'playing';
@@ -411,11 +420,15 @@ function update() {
 
     if (gameState === 'victory') {
         updateParticles();
-        victoryTimer--;
+        if (victoryTimer > 0) victoryTimer--;
         if (victoryTimer % 15 === 0 && victoryTimer > 100) {
             spawnParticles(Math.random()*900, Math.random()*500, ['#FFD700','#87CEEB','#90EE90','#DDA0DD'][Math.floor(Math.random()*4)], 10);
         }
-        if (victoryTimer <= 0 && (keys['Space'] || keys['Enter'])) {
+        // Only allow continue once both animation and video are done
+        const animDone = victoryTimer <= 0;
+        const vidDone = videoEnded || jedpVideo.paused;
+        if (animDone && vidDone && (keys['Space'] || keys['Enter'])) {
+            jedpVideo.pause();
             gameState = 'title';
         }
         return;
@@ -922,99 +935,94 @@ function drawVictory() {
     ctx.fillRect(0, 0, 900, 800);
     drawParticles();
 
-    // victoryTimer counts DOWN from 300
     const vt = 300 - victoryTimer;
     ctx.textAlign = 'center';
 
-    // Phase 0: The sources converge (frames 0-80)
-    if (vt >= 0) {
-        const alpha = Math.min(1, vt / 30);
-        ctx.globalAlpha = alpha;
-
-        // Four source letters fly toward center
-        SOURCES.forEach((s, i) => {
-            const targetX = 330 + i * 80;
-            const targetY = 120;
-            const startX = [50, 850, 50, 850][i];
-            const startY = [50, 50, 750, 750][i];
-            const progress = Math.min(1, vt / 70);
-            const ease = 1 - Math.pow(1 - progress, 3);
-            const cx = startX + (targetX - startX) * ease;
-            const cy = startY + (targetY - startY) * ease;
-            ctx.fillStyle = s.color;
-            ctx.font = 'bold 36px monospace';
-            ctx.fillText(s.key, cx, cy);
-        });
-    }
-
-    // Phase 1: "Torah Reconstructed!" (frames 60+)
-    if (vt >= 60) {
-        const alpha = Math.min(1, (vt - 60) / 40);
+    // Title fades in
+    if (vt >= 20) {
+        const alpha = Math.min(1, (vt - 20) / 40);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = '#FFD700';
-        ctx.font = 'bold 40px monospace';
-        ctx.fillText('TORAH RECONSTRUCTED!', 450, 200);
+        ctx.font = 'bold 36px monospace';
+        ctx.fillText('TORAH RECONSTRUCTED!', 450, 60);
     }
 
-    // Phase 2: Story text (frames 100+)
-    if (vt >= 100) {
-        const alpha = Math.min(1, (vt - 100) / 40);
+    // JEDP video plays in center
+    if (vt >= 10 && jedpVideo.readyState >= 2) {
+        const alpha = Math.min(1, (vt - 10) / 30);
+        ctx.globalAlpha = alpha;
+        const vw = jedpVideo.videoWidth || 640;
+        const vh = jedpVideo.videoHeight || 360;
+        const maxW = 520, maxH = 380;
+        const scale = Math.min(maxW / vw, maxH / vh);
+        const dw = vw * scale;
+        const dh = vh * scale;
+        const dx = (900 - dw) / 2;
+        const dy = 90;
+        // Border glow
+        ctx.strokeStyle = '#FFD70044';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(dx - 4, dy - 4, dw + 8, dh + 8);
+        ctx.drawImage(jedpVideo, dx, dy, dw, dh);
+    }
+
+    // Story text below video
+    if (vt >= 80) {
+        const alpha = Math.min(1, (vt - 80) / 40);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = '#FFFFFF';
         ctx.font = '18px monospace';
-        ctx.fillText('The Biblical Detective has uncovered', 450, 270);
-        ctx.fillText('all four sources of the', 450, 298);
-        ctx.fillText('Documentary Hypothesis!', 450, 326);
+        ctx.fillText('The Biblical Detective has uncovered', 450, 510);
+        ctx.fillText('all four sources of the Documentary Hypothesis!', 450, 538);
     }
 
-    // Phase 3: Sources list + cat (frames 140+)
-    if (vt >= 140) {
+    // Sources + cat
+    if (vt >= 130) {
         SOURCES.forEach((s, i) => {
-            const delay = i * 15;
-            const elapsed = vt - 140 - delay;
+            const delay = i * 12;
+            const elapsed = vt - 130 - delay;
             if (elapsed > 0) {
                 ctx.globalAlpha = Math.min(1, elapsed / 25);
                 const bx = 115 + i * 185;
                 ctx.fillStyle = s.color;
-                ctx.font = 'bold 24px monospace';
-                ctx.fillText(s.key, bx, 410);
-                ctx.font = '12px monospace';
-                ctx.fillText(s.name, bx, 432);
+                ctx.font = 'bold 22px monospace';
+                ctx.fillText(s.key, bx, 595);
+                ctx.font = '11px monospace';
+                ctx.fillText(s.name, bx, 615);
             }
         });
 
-        const catAlpha = Math.min(1, (vt - 180) / 30);
+        const catAlpha = Math.min(1, (vt - 170) / 30);
         if (catAlpha > 0 && spriteImages.south && spriteImages.south.complete) {
             ctx.globalAlpha = catAlpha;
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(spriteImages.south, 414, 470, 72, 72);
+            ctx.drawImage(spriteImages.south, 414, 638, 72, 72);
         }
     }
 
-    // Phase 4: Score + play again (frames 220+)
-    if (vt >= 220) {
-        const alpha = Math.min(1, (vt - 220) / 30);
+    // Score + deaths
+    if (vt >= 200) {
+        const alpha = Math.min(1, (vt - 200) / 30);
         ctx.globalAlpha = alpha;
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '18px monospace';
-        ctx.fillText('The Torah is whole once more.', 450, 590);
-
         ctx.fillStyle = '#FFD700';
-        ctx.font = '24px monospace';
-        ctx.fillText('Final Score: ' + score, 450, 640);
+        ctx.font = '22px monospace';
+        ctx.fillText('Final Score: ' + score, 450, 740);
 
         ctx.fillStyle = '#AAAAAA';
-        ctx.font = '16px monospace';
-        ctx.fillText('Deaths: ' + deaths, 450, 670);
+        ctx.font = '14px monospace';
+        ctx.fillText('Deaths: ' + deaths, 450, 765);
     }
 
-    if (victoryTimer <= 0) {
+    // Continue prompt — only when animation done AND video done
+    const animDone = victoryTimer <= 0;
+    const vidDone = videoEnded || jedpVideo.paused;
+    if (animDone && vidDone) {
         if (Math.sin(Date.now() / 300) > 0) {
             ctx.globalAlpha = 1;
             ctx.fillStyle = '#FFF';
             ctx.font = '18px monospace';
-            ctx.fillText('PRESS SPACE TO PLAY AGAIN', 450, 740);
+            ctx.fillText('PRESS SPACE TO PLAY AGAIN', 450, 790);
         }
     }
 
