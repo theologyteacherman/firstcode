@@ -151,31 +151,36 @@ function buildLevel(levelIdx) {
         playerStart.x = 60; playerStart.y = 710;
     }
     else if (levelIdx === 1) {
-        // E Source - Tower-like
-        platforms.push({ x: 50, y: 630, w: 300, h: 16 });
-        platforms.push({ x: 550, y: 630, w: 300, h: 16 });
-        platforms.push({ x: 250, y: 500, w: 400, h: 16 });
-        platforms.push({ x: 0, y: 370, w: 350, h: 16 });
-        platforms.push({ x: 550, y: 370, w: 350, h: 16 });
-        platforms.push({ x: 200, y: 240, w: 500, h: 16 });
-        platforms.push({ x: 300, y: 120, w: 300, h: 16 });
+        // E Source - Tower with split/center alternating floors
+        // Split floors have a gap; center floors bridge across.
+        // Path: Ground → F1 LEFT → F2 CENTER → F3 LEFT or RIGHT → F4 CENTER → Top
+        platforms.push({ x: 0, y: 630, w: 400, h: 16 });       // Floor 1 LEFT
+        platforms.push({ x: 500, y: 630, w: 400, h: 16 });      // Floor 1 RIGHT
+        platforms.push({ x: 100, y: 500, w: 700, h: 16 });      // Floor 2 CENTER (wide bridge)
+        platforms.push({ x: 0, y: 370, w: 400, h: 16 });        // Floor 3 LEFT
+        platforms.push({ x: 500, y: 370, w: 400, h: 16 });      // Floor 3 RIGHT
+        platforms.push({ x: 100, y: 240, w: 700, h: 16 });      // Floor 4 CENTER (wide bridge)
+        platforms.push({ x: 300, y: 120, w: 300, h: 16 });      // Top
 
-        ladders.push({ x: 320, y: 630, h: 130 });
-        ladders.push({ x: 580, y: 500, h: 130 });
-        ladders.push({ x: 320, y: 370, h: 130 });
-        ladders.push({ x: 580, y: 240, h: 130 });
-        ladders.push({ x: 430, y: 120, h: 120 });
-        ladders.push({ x: 140, y: 500, h: 130 });
+        // Every ladder sits on a platform at BOTH its top and bottom
+        ladders.push({ x: 350, y: 630, h: 130 });   // Ground→F1L (F1L: 0-400 ✓)
+        ladders.push({ x: 200, y: 500, h: 130 });    // F1L→F2 (F1L: 0-400 ✓, F2: 100-800 ✓)
+        ladders.push({ x: 750, y: 500, h: 130 });    // F1R→F2 (F1R: 500-900 ✓, F2: 100-800 ✓)
+        ladders.push({ x: 350, y: 370, h: 130 });    // F2→F3L (F2: 100-800 ✓, F3L: 0-400 ✓)
+        ladders.push({ x: 650, y: 370, h: 130 });    // F2→F3R (F2: 100-800 ✓, F3R: 500-900 ✓)
+        ladders.push({ x: 200, y: 240, h: 130 });    // F3L→F4 (F3L: 0-400 ✓, F4: 100-800 ✓)
+        ladders.push({ x: 750, y: 240, h: 130 });    // F3R→F4 (F3R: 500-900 ✓, F4: 100-800 ✓)
+        ladders.push({ x: 430, y: 120, h: 120 });    // F4→Top (F4: 100-800 ✓, Top: 300-600 ✓)
 
-        enemies.push({ x: 100, y: 614, w: 30, h: 16, speed: 0.7, minX: 50, maxX: 320, type: 'patrol' });
-        enemies.push({ x: 650, y: 614, w: 30, h: 16, speed: -0.7, minX: 550, maxX: 820, type: 'patrol' });
-        enemies.push({ x: 350, y: 484, w: 30, h: 16, speed: 0.9, minX: 250, maxX: 620, type: 'patrol' });
-        enemies.push({ x: 100, y: 354, w: 30, h: 16, speed: 0.8, minX: 0, maxX: 320, type: 'patrol' });
-        enemies.push({ x: 650, y: 354, w: 30, h: 16, speed: -0.8, minX: 550, maxX: 870, type: 'patrol' });
-        enemies.push({ x: 400, y: 224, w: 30, h: 16, speed: 1.0, minX: 200, maxX: 670, type: 'patrol' });
+        enemies.push({ x: 150, y: 614, w: 30, h: 16, speed: 0.7, minX: 0, maxX: 370, type: 'patrol' });
+        enemies.push({ x: 650, y: 614, w: 30, h: 16, speed: -0.7, minX: 500, maxX: 870, type: 'patrol' });
+        enemies.push({ x: 400, y: 484, w: 30, h: 16, speed: 0.9, minX: 100, maxX: 770, type: 'patrol' });
+        enemies.push({ x: 150, y: 354, w: 30, h: 16, speed: 0.8, minX: 0, maxX: 370, type: 'patrol' });
+        enemies.push({ x: 650, y: 354, w: 30, h: 16, speed: -0.8, minX: 500, maxX: 870, type: 'patrol' });
+        enemies.push({ x: 400, y: 224, w: 30, h: 16, speed: 1.0, minX: 100, maxX: 770, type: 'patrol' });
 
         scrollPos.x = 420; scrollPos.y = 65;
-        playerStart.x = 100; playerStart.y = 710;
+        playerStart.x = 60; playerStart.y = 710;
     }
     else if (levelIdx === 2) {
         // D Source - Zigzag with gaps
