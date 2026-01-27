@@ -183,28 +183,32 @@ function buildLevel(levelIdx) {
         playerStart.x = 60; playerStart.y = 710;
     }
     else if (levelIdx === 2) {
-        // D Source - Zigzag with gaps
-        platforms.push({ x: 0, y: 640, w: 400, h: 16 });
-        platforms.push({ x: 500, y: 640, w: 400, h: 16 });
-        platforms.push({ x: 150, y: 510, w: 600, h: 16 });
-        platforms.push({ x: 0, y: 380, w: 400, h: 16 });
-        platforms.push({ x: 500, y: 380, w: 400, h: 16 });
-        platforms.push({ x: 150, y: 250, w: 600, h: 16 });
-        platforms.push({ x: 300, y: 120, w: 300, h: 16 });
+        // D Source - Zigzag traversal with jumpable gaps
+        // Each floor has two segments with a ~100px gap to jump across.
+        // Ladders alternate left/right sides, forcing a zigzag path.
+        platforms.push({ x: 0, y: 630, w: 380, h: 16 });       // Floor 1 LEFT
+        platforms.push({ x: 480, y: 630, w: 420, h: 16 });      // Floor 1 RIGHT
+        platforms.push({ x: 0, y: 500, w: 420, h: 16 });        // Floor 2 LEFT
+        platforms.push({ x: 520, y: 500, w: 380, h: 16 });      // Floor 2 RIGHT
+        platforms.push({ x: 0, y: 370, w: 380, h: 16 });        // Floor 3 LEFT
+        platforms.push({ x: 480, y: 370, w: 420, h: 16 });      // Floor 3 RIGHT
+        platforms.push({ x: 100, y: 240, w: 700, h: 16 });      // Floor 4 (wide, reward)
+        platforms.push({ x: 300, y: 120, w: 300, h: 16 });      // Top
 
-        ladders.push({ x: 360, y: 510, h: 130 });
-        ladders.push({ x: 720, y: 510, h: 130 });
-        ladders.push({ x: 200, y: 380, h: 130 });
-        ladders.push({ x: 560, y: 250, h: 130 });
-        ladders.push({ x: 200, y: 250, h: 130 });
-        ladders.push({ x: 430, y: 120, h: 130 });
+        // Zigzag: climb left → run right, jump gap → climb right → run left, jump gap → etc.
+        ladders.push({ x: 140, y: 630, h: 130 });    // Ground→F1L (F1L: 0-380 ✓)
+        ladders.push({ x: 830, y: 500, h: 130 });    // F1R→F2R (F1R: 480-900 ✓, F2R: 520-900 ✓)
+        ladders.push({ x: 140, y: 370, h: 130 });    // F2L→F3L (F2L: 0-420 ✓, F3L: 0-380 ✓)
+        ladders.push({ x: 760, y: 240, h: 130 });    // F3R→F4 (F3R: 480-900 ✓, F4: 100-800 ✓)
+        ladders.push({ x: 430, y: 120, h: 120 });    // F4→Top (F4: 100-800 ✓, Top: 300-600 ✓)
 
-        enemies.push({ x: 100, y: 624, w: 30, h: 16, speed: 0.8, minX: 0, maxX: 370, type: 'patrol' });
-        enemies.push({ x: 600, y: 624, w: 30, h: 16, speed: -0.8, minX: 500, maxX: 870, type: 'patrol' });
-        enemies.push({ x: 350, y: 494, w: 30, h: 16, speed: 1.0, minX: 150, maxX: 720, type: 'patrol' });
-        enemies.push({ x: 100, y: 364, w: 30, h: 16, speed: 0.7, minX: 0, maxX: 370, type: 'patrol' });
-        enemies.push({ x: 650, y: 364, w: 30, h: 16, speed: -0.8, minX: 500, maxX: 870, type: 'patrol' });
-        enemies.push({ x: 400, y: 234, w: 30, h: 16, speed: -1.0, minX: 150, maxX: 720, type: 'patrol' });
+        enemies.push({ x: 200, y: 614, w: 30, h: 16, speed: 0.8, minX: 0, maxX: 350, type: 'patrol' });
+        enemies.push({ x: 600, y: 614, w: 30, h: 16, speed: -0.9, minX: 480, maxX: 870, type: 'patrol' });
+        enemies.push({ x: 200, y: 484, w: 30, h: 16, speed: -0.8, minX: 0, maxX: 390, type: 'patrol' });
+        enemies.push({ x: 650, y: 484, w: 30, h: 16, speed: 0.9, minX: 520, maxX: 870, type: 'patrol' });
+        enemies.push({ x: 200, y: 354, w: 30, h: 16, speed: 0.8, minX: 0, maxX: 350, type: 'patrol' });
+        enemies.push({ x: 600, y: 354, w: 30, h: 16, speed: -0.9, minX: 480, maxX: 870, type: 'patrol' });
+        enemies.push({ x: 400, y: 224, w: 30, h: 16, speed: 1.0, minX: 100, maxX: 770, type: 'patrol' });
 
         scrollPos.x = 420; scrollPos.y = 65;
         playerStart.x = 60; playerStart.y = 710;
@@ -287,7 +291,7 @@ function drawParticles() {
 // --- GAME STATE ---
 let gameState = 'title';
 let currentLevel = 0;
-let lives = 5;
+let deaths = 0;
 let score = 0;
 let levelData = null;
 let player = null;
@@ -350,7 +354,7 @@ function update() {
             ensureAudio();
             gameState = 'playing';
             currentLevel = 0;
-            lives = 5;
+            deaths = 0;
             score = 0;
             sourcesCollected = [false, false, false, false];
             initLevel(0);
@@ -518,19 +522,14 @@ function update() {
 }
 
 function loseLife() {
-    lives--;
-    playSound(lives <= 0 ? 'die' : 'hurt');
-    if (lives <= 0) {
-        gameState = 'gameOver';
-        gameOverTimer = 120;
-    } else {
-        spawnParticles(player.x + PLAYER_W/2, player.y + PLAYER_H/2, '#FF4444', 20);
-        player.x = levelData.playerStart.x;
-        player.y = levelData.playerStart.y;
-        player.vx = 0; player.vy = 0;
-        player.climbing = false;
-        invincibleTimer = 90;
-    }
+    deaths++;
+    playSound('hurt');
+    spawnParticles(player.x + PLAYER_W/2, player.y + PLAYER_H/2, '#FF4444', 20);
+    player.x = levelData.playerStart.x;
+    player.y = levelData.playerStart.y;
+    player.vx = 0; player.vy = 0;
+    player.climbing = false;
+    invincibleTimer = 90;
 }
 
 // --- DRAW ---
@@ -748,12 +747,10 @@ function drawHUD() {
     ctx.textAlign = 'left';
     ctx.fillText('Level ' + (currentLevel + 1) + ': ' + src.name, 10, 24);
 
-    ctx.fillStyle = '#FF6666';
+    ctx.fillStyle = '#AAAAAA';
     ctx.font = '16px monospace';
     ctx.textAlign = 'right';
-    let livesStr = '';
-    for (let i = 0; i < lives; i++) livesStr += '\u2764 ';
-    ctx.fillText(livesStr, 890, 24);
+    ctx.fillText('Deaths: ' + deaths, 890, 24);
 
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
@@ -851,7 +848,11 @@ function drawVictory() {
 
     ctx.fillStyle = '#FFD700';
     ctx.font = '24px monospace';
-    ctx.fillText('Final Score: ' + score, 450, 550);
+    ctx.fillText('Final Score: ' + score, 450, 540);
+
+    ctx.fillStyle = '#AAAAAA';
+    ctx.font = '16px monospace';
+    ctx.fillText('Deaths: ' + deaths, 450, 570);
 
     if (victoryTimer <= 0) {
         if (Math.sin(Date.now() / 300) > 0) {
