@@ -13,6 +13,7 @@
 <body>
 <canvas id="game"></canvas>
 <video id="jedpVideo" src="JEDP.mp4" preload="auto" muted playsinline style="display:none;"></video>
+<audio id="bgMusic" src="Pixel_Sunset_2026-01-28T110627.mp3" preload="auto" loop></audio>
 <script>
 // ============================================================
 // BIBLICAL DETECTIVE - A Donkey Kong-Style Platformer
@@ -28,6 +29,10 @@ canvas.height = 800;
 const jedpVideo = document.getElementById('jedpVideo');
 let videoEnded = false;
 jedpVideo.addEventListener('ended', () => { videoEnded = true; });
+
+// --- BACKGROUND MUSIC ---
+const bgMusic = document.getElementById('bgMusic');
+bgMusic.volume = 0.4;
 
 // --- SPRITES (actual user-provided orange cat detective) ---
 const SPRITES = {
@@ -372,6 +377,7 @@ function update() {
     if (gameState === 'title') {
         if (keys['Space'] || keys['Enter']) {
             ensureAudio();
+            bgMusic.play().catch(() => {});
             gameState = 'intro';
             introTimer = 0;
             introPhase = 0;
@@ -425,6 +431,8 @@ function update() {
     if (gameState === 'gameOver') {
         gameOverTimer--;
         if (gameOverTimer <= 0 && (keys['Space'] || keys['Enter'])) {
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
             gameState = 'title';
         }
         return;
@@ -441,6 +449,8 @@ function update() {
         const vidDone = videoEnded || jedpVideo.paused;
         if (animDone && vidDone && (keys['Space'] || keys['Enter'])) {
             jedpVideo.pause();
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
             gameState = 'title';
         }
         return;
